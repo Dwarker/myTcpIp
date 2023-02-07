@@ -11,6 +11,7 @@
 #include "pcap.h"
 #include "echo/tcp_echo_client.h"
 #include "echo/tcp_echo_server.h"
+#include "net.h"
 
 static sys_sem_t sem;
 static sys_mutex_t mutex;
@@ -65,51 +66,12 @@ void thread2_entry (void *arg) {
 }
 
 int main (void) {
-	sem = sys_sem_create(0);
-	read_sem = sys_sem_create(0);
-	write_sem = sys_sem_create(sizeof(buffer));
+	net_init();
+	net_start();
 
-	mutex = sys_mutex_create();
-
-	//sys_thread_create(thread1_entry, "AAA");
-	//sys_thread_create(thread2_entry, "BBB");
-
-	//tcp_echo_client_start(friend0_ip, 5000);
-	tcp_echo_server_start(5000);
-
-	pcap_t *pcap = pcap_device_open(netdev0_phy_ip, netdev0_hwaddr);
-	while (pcap) {
-		static uint8_t buffer[1024];
-		static int counter = 0;
-		//接收的数据包包头地址
-		struct pcap_pkthdr *pkthdr;
-		//从网卡获取的数据地址
-		const uint8_t *pkt_data;
-
-		plat_printf("begin test: %d\n", counter++);
-		for (int i = 0; i < sizeof(buffer); i++) {
-			buffer[i] = i;
-		}
-
-		//接收数据:如果没有数据, 会等待,所以该循环不需要利用sleep
-		//达到避免过渡消耗CPU的作用
-		if (pcap_next_ex(pcap, &pkthdr, &pkt_data) != 1) {
-			continue;
-		}
-
-		//拷贝获取数据
-		int len = pkthdr->len > sizeof(buffer) ? sizeof(buffer) : pkthdr->len;
-		plat_memcpy(buffer, pkt_data, len);
-		buffer[0] = 3;
-		buffer[1] = 4;
-
-		//发送数据给网卡
-		if (pcap_inject(pcap, buffer, sizeof(buffer)) == -1) {
-			plat_printf("pcap send: send packet failed %s\n", pcap_geterr(pcap));
-			break;
-		}
+	while (1) {
+		
 	}
 
-	printf("Hello, world");
 	return 0;
 }
