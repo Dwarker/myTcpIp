@@ -55,23 +55,19 @@ void thread2_entry (void *arg) {
 		sys_sem_notify(read_sem);
 		plat_printf("AAA\n");
 	}
+}
+#include "netif_pcap.h"
 
-	#if 0
-	while (1) {
-		sys_sleep(5000);
-		sys_sem_wait(sem, 0);
-		plat_printf("this is thread2: %s\n", (char *)arg);
-	}
-	#endif
+net_err_t netdev_init (void) {
+	netif_pcap_open();
+	return NET_ERR_OK;
 }
 
 int main (void) {
 	net_init();
 	net_start();
 
-	while (1) {
-		
-	}
+	netdev_init();
 
 	return 0;
 }
