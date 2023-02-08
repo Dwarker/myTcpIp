@@ -12,6 +12,7 @@
 #include "echo/tcp_echo_client.h"
 #include "echo/tcp_echo_server.h"
 #include "net.h"
+#include "dbg.h"
 
 static sys_sem_t sem;
 static sys_mutex_t mutex;
@@ -63,7 +64,13 @@ net_err_t netdev_init (void) {
 	return NET_ERR_OK;
 }
 
+#define DBG_TEST DBG_LEVEL_INFO
+
 int main (void) {
+	dbg_info(DBG_TEST, "info");
+	dbg_warning(DBG_TEST, "warning");
+	dbg_error(DBG_TEST, "error");
+
 	net_init();
 	net_start();
 
