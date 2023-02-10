@@ -14,6 +14,7 @@
 #include "net.h"
 #include "dbg.h"
 #include "nlist.h"
+#include "mblock.h"
 
 static sys_sem_t sem;
 static sys_mutex_t mutex;
