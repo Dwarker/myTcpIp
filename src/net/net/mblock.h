@@ -11,4 +11,6 @@ typedef struct _mblock_t {
     sys_sem_t alloc_sem;//当链表为无资源时,等待使用
 }mblock_t;
 
+net_err_t mblock_init (mblock_t *mblock, void *mem, int blk_size, 
+                        int cnt, nlocker_type_t locker);
 #endif

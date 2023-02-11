@@ -1,9 +1,10 @@
 #include "nlocker.h"
+#include "sys_plat.h"
 
 net_err_t nlocker_init (nlocker_t *locker, nlocker_type_t type) {
     if (type == NLOCKER_THREAD) {
         sys_mutex_t mutex = sys_mutex_create();
-        if (mutex == SYS_MUTEX_INVALID) {
+        if (mutex == SYS_MUTEx_INVALID) {
             return NET_ERR_SYS;
         }
         locker->mutex = mutex;
