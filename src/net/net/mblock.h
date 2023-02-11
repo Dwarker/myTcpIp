@@ -13,4 +13,9 @@ typedef struct _mblock_t {
 
 net_err_t mblock_init (mblock_t *mblock, void *mem, int blk_size, 
                         int cnt, nlocker_type_t locker);
+
+//当空闲内存耗尽,不希望线程停在这里,加上等待时间,超过这段时间即返回
+void *mblock_alloc (mblock_t* block, int ms);
+//返回空闲内存块数量
+int mblock_free_cnt (mblock_t *block);
 #endif

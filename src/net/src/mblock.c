@@ -27,5 +27,39 @@ net_err_t mblock_init (mblock_t *mblock, void *mem, int blk_size,
         }
     }
 
+    mblock->start = mem;
+
     return NET_ERR_OK;
+}
+
+void *mblock_alloc (mblock_t* mblock, int ms) {
+    //如果ms小于0,或者是在线程内部使用,有则取,无则直接返回
+    if ((ms < 0) || (mblock->locker.type == NLOCKER_NONE)) {
+        nlocker_lock(&mblock->locker);
+        int count = nlist_count(&mblock->free_list);
+        if (count == 0) {
+            nlocker_unlock(&mblock->locker);
+            return (void *)0;
+        } else {
+            nlist_node_t *block = nlist_remove_first(&mblock->free_list);
+            nlocker_unlock(&mblock->locker);
+            return block;
+        }
+    } else {
+        if (sys_sem_wait(mblock->alloc_sem, ms) < 0) {
+            return (void *)0;
+        } else {
+            nlocker_lock(&mblock->locker);
+            nlist_node_t *block = nlist_remove_first(&mblock->free_list);
+            nlocker_unlock(&mblock->locker);
+            return block;
+        }
+    }
+}
+
+int mblock_free_cnt (mblock_t *block) {
+    nlocker_lock(&block->locker);
+    int count = nlist_count(&block->free_list);
+    nlocker_unlock(&block->locker);
+    return count;
 }
