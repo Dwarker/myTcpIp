@@ -167,5 +167,9 @@ int main (void) {
 	net_start();
 	netdev_init();
 
+	while (1) {
+		sys_sleep(1);
+	};
+
 	return 0;
 }

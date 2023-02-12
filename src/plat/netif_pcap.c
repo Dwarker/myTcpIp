@@ -1,6 +1,7 @@
 #include "netif_pcap.h"
 #include "sys_plat.h"
 #include "net_err.h"
+#include "exmsg.h"
 
 //网卡数据接收线程
 void recv_thread (void *arg) {
@@ -8,6 +9,7 @@ void recv_thread (void *arg) {
 
     while (1) {
         sys_sleep(1);
+        exmsg_netif_in();
     }
     
 }
