@@ -15,6 +15,7 @@
 #include "dbg.h"
 #include "nlist.h"
 #include "mblock.h"
+#include "pktbuf.h"
 
 static sys_sem_t sem;
 static sys_mutex_t mutex;
@@ -145,9 +146,15 @@ void mblock_test(void) {
 	mblock_destroy(&blist);
 }
 
+void pktbuf_test() {
+	pktbuf_t *buf = pktbuf_alloc(2000);
+	pktbuf_free(buf);
+}
+
 void basic_test(void) {
 	nlist_test();
 	mblock_test();
+	pktbuf_test();
 }
 
 #define DBG_TEST DBG_LEVEL_INFO
@@ -168,7 +175,7 @@ int main (void) {
 	netdev_init();
 
 	while (1) {
-		sys_sleep(1);
+		sys_sleep(10);
 	};
 
 	return 0;
