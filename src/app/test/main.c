@@ -159,10 +159,32 @@ void basic_test(void) {
 
 #define DBG_TEST DBG_LEVEL_INFO
 
+#if 0
+static sys_sem_t sem1;
+void thread3_entry (void *arg) {
+	while (1) {
+		plat_printf("3\n");
+		//sys_sem_notify(sem1);
+	}
+}
+
+void thread4_entry (void *arg) {
+	while (1) {
+		sys_sem_wait(sem1, 0);
+		plat_printf("4\n");
+	}
+}
+#endif
 int main (void) {
 	dbg_info(DBG_TEST, "info");
 	dbg_warning(DBG_TEST, "warning");
 	dbg_error(DBG_TEST, "error");
+
+	#if 0
+	sem1 = sys_sem_create(0);
+	sys_thread_create(thread3_entry, "AAA");
+	sys_thread_create(thread4_entry, "BBB");
+	#endif
 
 	//dbg_assert(1 == 1, "failed");
 	//dbg_assert(1 == 0, "failed");
