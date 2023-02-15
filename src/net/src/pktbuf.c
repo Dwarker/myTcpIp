@@ -167,6 +167,7 @@ static void pktbuf_insert_blk_list(pktbuf_t *buf, pktblk_t *first_blk, int add_l
                 nlist_insert_fist(&buf->blk_list, &first_blk->node);
             }
 
+            buf->total_size += first_blk->size;
             pre = first_blk;
             first_blk = next_blk;
         }
@@ -202,4 +203,38 @@ pktbuf_t *pktbuf_alloc (int size) {
 void pktbuf_free (pktbuf_t *buf) {
     pktblock_free_list(pktbuf_first_blk(buf));
     mblock_free(&pktbuf_list, buf);
+}
+
+net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont) {
+    pktblk_t *block = pktbuf_first_blk(buf);
+
+    //前面有多余的存储空间可以存储包头
+    int resv_size = (int)(block->data - block->payload);
+    if (size <= resv_size) {
+        block->size += size;
+        block->data -= size;
+        buf->total_size += size;
+
+        display_check_buf(buf);
+        return NET_ERR_OK;
+    }
+
+    if (cont) {
+        if (size > PKTBUF_BLK_SIZE) {
+            dbg_error(DBG_BUF, "set cont, size too big: %d > %d\n", size, PKTBUF_BLK_SIZE);
+            return NET_ERR_SIZE;
+        }
+
+        block = pktblock_alloc_list(size, 1);//使用头插法
+        if (!block) {
+            dbg_error(DBG_BUF, "no buffer (size %d)", size);
+            return NET_ERR_NONE;
+        }
+    } else {
+
+    }
+
+    pktbuf_insert_blk_list(buf, block, 0);//头部插入
+    display_check_buf(buf);
+    return NET_ERR_OK;
 }

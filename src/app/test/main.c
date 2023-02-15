@@ -149,6 +149,11 @@ void mblock_test(void) {
 void pktbuf_test() {
 	pktbuf_t *buf = pktbuf_alloc(2000);
 	pktbuf_free(buf);
+
+	buf = pktbuf_alloc(2000);
+	for (int i = 0; i < 16; i++) {
+		pktbuf_add_header(buf, 33, 1);
+	}
 }
 
 void basic_test(void) {
@@ -163,8 +168,8 @@ void basic_test(void) {
 static sys_sem_t sem1;
 void thread3_entry (void *arg) {
 	while (1) {
-		plat_printf("3\n");
-		//sys_sem_notify(sem1);
+		//plat_printf("3\n");
+		sys_sem_notify(sem1);
 	}
 }
 
@@ -189,12 +194,14 @@ int main (void) {
 	//dbg_assert(1 == 1, "failed");
 	//dbg_assert(1 == 0, "failed");
 
+	#if 1
 	net_init();
 
 	basic_test();
 
 	net_start();
 	netdev_init();
+	#endif
 
 	while (1) {
 		sys_sleep(10);

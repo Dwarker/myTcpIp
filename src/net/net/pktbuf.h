@@ -33,4 +33,7 @@ static inline pktblk_t *pktbuf_first_blk (pktbuf_t *buf) {
     return nlist_entry(first, pktblk_t, node);
 }
 
+//size:新增头部大小, cont:头部是否连续
+net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont);
+
 #endif
