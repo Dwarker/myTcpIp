@@ -95,6 +95,14 @@ static pktblk_t *pktblock_alloc (void) {
     return block;
 }
 
+static void pktblock_free_list (pktblk_t* first) {
+    while (first) {
+        pktblk_t *next_block = pktblk_blk_next(first);
+        mblock_free(&block_list, first);
+        first = next_block;
+    }
+}
+
 //0:尾插法, 1:头插法
 static pktblk_t *pktblock_alloc_list (int size, int add_front) {
     pktblk_t *first_block = (pktblk_t *)0;//返回给上层使用
@@ -178,7 +186,7 @@ pktbuf_t *pktbuf_alloc (int size) {
     nlist_node_init(&buf->node);
 
     if (size) {
-        pktblk_t *block = pktblock_alloc_list(size, 0);
+        pktblk_t *block = pktblock_alloc_list(size, 1);
         if (!block) {
             mblock_free(&pktbuf_list, buf);
             return (pktbuf_t *)0;
@@ -192,5 +200,6 @@ pktbuf_t *pktbuf_alloc (int size) {
     return buf;
 }
 void pktbuf_free (pktbuf_t *buf) {
-
+    pktblock_free_list(pktbuf_first_blk(buf));
+    mblock_free(&pktbuf_list, buf);
 }
