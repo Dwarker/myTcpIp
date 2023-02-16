@@ -95,10 +95,14 @@ static pktblk_t *pktblock_alloc (void) {
     return block;
 }
 
+static void pktblock_free (pktblk_t *block) {
+    mblock_free(&block_list, block);
+}
+
 static void pktblock_free_list (pktblk_t* first) {
     while (first) {
         pktblk_t *next_block = pktblk_blk_next(first);
-        mblock_free(&block_list, first);
+        pktblock_free(first);
         first = next_block;
     }
 }
@@ -231,10 +235,48 @@ net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont) {
             return NET_ERR_NONE;
         }
     } else {
+        //包头不连续的情况,将剩下的一小部分利用,再分配一个新的存剩余的包头
+        block->data = block->payload;
+        block->size += resv_size;
+        buf->total_size += resv_size;
+        size -= resv_size;
 
+        block = pktblock_alloc_list(size, 1);//根据size大小分配需要的块数
+        if (!block) {
+            dbg_error(DBG_BUF, "no buffer (size %d)", size);
+            return NET_ERR_NONE;
+        }
     }
 
     pktbuf_insert_blk_list(buf, block, 0);//头部插入
+    display_check_buf(buf);
+    return NET_ERR_OK;
+}
+
+net_err_t pktbuf_remove_header(pktbuf_t *buf, int size) {
+    pktblk_t *block = pktbuf_first_blk(buf);
+
+    while (size) {
+        pktblk_t* next_blk = pktblk_blk_next(block);//获取下个数据包
+        //当空间大于要移除的包头大小时,此时除了包头,还有其他数据,直接指针偏移即可
+        if (size < block->size) {
+            block->data += size;
+            block->size -= size;
+            buf->total_size -= size;
+            break;
+        }
+        //当要移除的包头的大小大于当前包的大小时,
+        //说明此时该包除了包头数据,没有载荷了,故直接移除
+        int curr_size = block->size;
+        nlist_remove_first(&buf->blk_list);
+        pktblock_free(block);
+        
+        size -= curr_size;
+        buf->total_size -= curr_size;
+
+        block = next_blk;
+    }
+
     display_check_buf(buf);
     return NET_ERR_OK;
 }

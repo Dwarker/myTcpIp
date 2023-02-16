@@ -8,7 +8,7 @@
 
 typedef struct _pktblk_t {
     nlist_node_t node;
-    int size;
+    int size;   //当前使用的大小
     uint8_t *data;
     uint8_t payload[PKTBUF_BLK_SIZE];
 }pktblk_t;
@@ -35,5 +35,7 @@ static inline pktblk_t *pktbuf_first_blk (pktbuf_t *buf) {
 
 //size:新增头部大小, cont:头部是否连续
 net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont);
+//size:移除多大的空间
+net_err_t pktbuf_remove_header(pktbuf_t *buf, int size);
 
 #endif

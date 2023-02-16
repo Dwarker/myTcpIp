@@ -152,7 +152,19 @@ void pktbuf_test() {
 
 	buf = pktbuf_alloc(2000);
 	for (int i = 0; i < 16; i++) {
-		pktbuf_add_header(buf, 33, 1);
+		pktbuf_add_header(buf, 33, 1);//连续包头添加测试
+	}
+
+	for (int i = 0; i < 16; i++) {
+		pktbuf_remove_header(buf, 33);
+	}
+
+	for (int i = 0; i < 16; i++) {
+		pktbuf_add_header(buf, 33, 0);//非连续包头添加测试
+	}
+
+	for (int i = 0; i < 16; i++) {
+		pktbuf_remove_header(buf, 33);
 	}
 }
 
