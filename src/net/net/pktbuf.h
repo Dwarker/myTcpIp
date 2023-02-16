@@ -33,9 +33,16 @@ static inline pktblk_t *pktbuf_first_blk (pktbuf_t *buf) {
     return nlist_entry(first, pktblk_t, node);
 }
 
+static inline pktblk_t *pktbuf_last_blk (pktbuf_t *buf) {
+    nlist_node_t *last = nlist_last(&buf->blk_list);
+    return nlist_entry(last, pktblk_t, node);
+}
+
 //size:新增头部大小, cont:头部是否连续
 net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont);
 //size:移除多大的空间
 net_err_t pktbuf_remove_header(pktbuf_t *buf, int size);
+//从尾部调(如果头部有空,是不管的)
+net_err_t pktbuf_resize(pktbuf_t *buf, int to_size);
 
 #endif
