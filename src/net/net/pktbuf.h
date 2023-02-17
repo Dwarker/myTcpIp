@@ -17,6 +17,14 @@ typedef struct _pktbuf_t {
     int total_size;     //数据包总大小
     nlist_t blk_list;
     nlist_node_t node;  //用来链接数据包
+
+    //数据可能是不连续的,所有逻辑上从pos位置开始
+    //查找就可以了,但是实际上分布在不同的数据包中,
+    //所以新增curr_blk变量指向pos位置在哪个数据包中,
+    //再新增blk_offset指向逻辑上的pos位置,在curr_blk数据包的哪个位置
+    int pos;//当前读取的数据位置
+    pktblk_t *curr_blk;//
+    uint8_t *blk_offset;
 }pktbuf_t;
 
 net_err_t pktbuf_init (void);
@@ -38,6 +46,10 @@ static inline pktblk_t *pktbuf_last_blk (pktbuf_t *buf) {
     return nlist_entry(last, pktblk_t, node);
 }
 
+static int inline pktbuf_total (pktbuf_t *buf) {
+    return buf->total_size;
+}
+
 //size:新增头部大小, cont:头部是否连续
 net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont);
 //size:移除多大的空间
@@ -47,5 +59,9 @@ net_err_t pktbuf_resize(pktbuf_t *buf, int to_size);
 net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src);
 //将不连续的数据合并成一个包
 net_err_t pktbuf_set_cont(pktbuf_t *buf, int size);
+//重置访问字段
+void pktbuf_reset_acc(pktbuf_t *buf);
+//写数据
+net_err_t pktbuf_write (pktbuf_t *buf, uint8_t *src, int size);
 
 #endif

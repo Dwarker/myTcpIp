@@ -199,6 +199,23 @@ void pktbuf_test() {
 	pktbuf_set_cont(buf, 128);
 	pktbuf_set_cont(buf, 135);
 	pktbuf_free(buf);
+
+	//测试数据访问
+	buf = pktbuf_alloc(32);
+	pktbuf_join(buf, pktbuf_alloc(4));
+	pktbuf_join(buf, pktbuf_alloc(16));
+	pktbuf_join(buf, pktbuf_alloc(54));
+	pktbuf_join(buf, pktbuf_alloc(32));
+	pktbuf_join(buf, pktbuf_alloc(38));
+	pktbuf_join(buf, pktbuf_alloc(512));
+
+	pktbuf_reset_acc(buf);
+
+	static uint16_t temp[1000];
+	for (int i = 0; i < 1000; i++) {
+		temp[i] = i;
+	}
+	pktbuf_write(buf, (uint8_t*)temp, pktbuf_total(buf));
 }
 
 void basic_test(void) {

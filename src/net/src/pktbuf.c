@@ -19,6 +19,19 @@ typedef struct _pktbuf_t {
 }pktbuf_t;
 #endif
 
+static inline int total_blk_remain (pktbuf_t *buf) {
+    return buf->total_size - buf->pos;
+}
+
+static int curr_blk_remain (pktbuf_t *buf) {
+    pktblk_t *block = buf->curr_blk;
+    if (!block) {
+        return 0;
+    }
+
+    return (int)(buf->curr_blk->data + block->size - buf->blk_offset);
+}
+
 static inline int curr_blk_tail_free (pktblk_t *blk) {
     return (int)((blk->payload + PKTBUF_BLK_SIZE) - (blk->data + blk->size));
 }
@@ -200,6 +213,8 @@ pktbuf_t *pktbuf_alloc (int size) {
 
         pktbuf_insert_blk_list(buf, block, 1);
     }
+    //可能分配后立即读写,所以分配后立马重置
+    pktbuf_reset_acc(buf);
 
     display_check_buf(buf);
 
@@ -416,5 +431,54 @@ net_err_t pktbuf_set_cont(pktbuf_t *buf, int size) {
         }
     }
     display_check_buf(buf);
+    return NET_ERR_OK;
+}
+
+void pktbuf_reset_acc(pktbuf_t *buf) {
+    if (buf) {
+        buf->pos = 0;
+        buf->curr_blk = pktbuf_first_blk(buf);
+        buf->blk_offset = buf->curr_blk ? buf->curr_blk->data : (uint8_t *)0;
+    }
+}
+
+static void move_forward (pktbuf_t *buf, int size) {
+    buf->pos += size;
+    buf->blk_offset += size;
+
+    pktblk_t* curr = buf->curr_blk;
+    if (buf->blk_offset >= curr->data + curr->size) {
+        buf->curr_blk = pktblk_blk_next(curr);
+        if (buf->curr_blk) {
+            buf->blk_offset = buf->curr_blk->data;
+        } else {
+            buf->blk_offset = (uint8_t *)0;
+        }
+    }
+}
+
+net_err_t pktbuf_write (pktbuf_t *buf, uint8_t *src, int size) {
+    if (!src || !size) {
+        return NET_ERR_PARAM;
+    }
+
+    //计算当前数据包链表中剩余可用空间是否满足
+    int remain_size = total_blk_remain(buf);
+    if (remain_size < size) {
+        dbg_error(DBG_BUF, "size error: %d < %d", remain_size, size);
+        return NET_ERR_SIZE;
+    }
+
+    while (size) {
+        int blk_size = curr_blk_remain(buf);
+
+        int curr_copy = size > blk_size ? blk_size : size;
+        plat_memcpy(buf->blk_offset, src, curr_copy);
+        src += curr_copy;
+        size -= curr_copy;
+
+        move_forward(buf, curr_copy);//移动指标
+    }
+
     return NET_ERR_OK;
 }
