@@ -28,7 +28,7 @@ static int curr_blk_remain (pktbuf_t *buf) {
     if (!block) {
         return 0;
     }
-
+    //该块未使用空间大小
     return (int)(buf->curr_blk->data + block->size - buf->blk_offset);
 }
 
@@ -537,6 +537,29 @@ net_err_t pktbuf_seek (pktbuf_t *buf, int offset) {
 
         move_forward(buf, curr_move);
         move_bytes -= curr_move;
+    }
+
+    return NET_ERR_OK;
+}
+
+net_err_t pktbuf_copy (pktbuf_t *dest, pktbuf_t *src, int size) {
+    if ((total_blk_remain(dest) < size) 
+        || total_blk_remain(src) < size) {
+        return NET_ERR_SIZE;
+    }
+
+    while (size) {
+        int dest_remain = curr_blk_remain(dest);
+        int src_remain = curr_blk_remain(src);
+        int copy_size = dest_remain > src_remain ? src_remain : dest_remain;
+    
+        copy_size = copy_size > size ? size : copy_size;
+        plat_memcpy(dest->blk_offset, src->blk_offset, copy_size);
+
+        //前移后,继续往后做拷贝
+        move_forward(dest, copy_size);
+        move_forward(src, copy_size);
+        size -= copy_size;
     }
 
     return NET_ERR_OK;
