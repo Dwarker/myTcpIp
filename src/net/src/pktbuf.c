@@ -564,3 +564,29 @@ net_err_t pktbuf_copy (pktbuf_t *dest, pktbuf_t *src, int size) {
 
     return NET_ERR_OK;
 }
+
+net_err_t pktbuf_fill (pktbuf_t *buf, uint8_t value, int size) {
+       if (!size) {
+        return NET_ERR_PARAM;
+    }
+
+    //计算当前数据包链表中剩余可用空间是否满足
+    int remain_size = total_blk_remain(buf);
+    if (remain_size < size) {
+        dbg_error(DBG_BUF, "size error: %d < %d", remain_size, size);
+        return NET_ERR_SIZE;
+    }
+
+    while (size) {
+        int blk_size = curr_blk_remain(buf);
+
+        int curr_fill = size > blk_size ? blk_size : size;
+        plat_memset(buf->blk_offset, value, curr_fill);
+
+        size -= curr_fill;
+
+        move_forward(buf, curr_fill);//移动指标
+    }
+
+    return NET_ERR_OK;
+}

@@ -67,5 +67,6 @@ net_err_t pktbuf_read (pktbuf_t *buf, uint8_t *dest, int size);
 net_err_t pktbuf_seek (pktbuf_t *buf, int offset);
 //从src的pos位置拷贝至dest的pos位置
 net_err_t pktbuf_copy (pktbuf_t *dest, pktbuf_t *src, int size);
+net_err_t pktbuf_fill (pktbuf_t *buf, uint8_t value, int size);
 
 #endif

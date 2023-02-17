@@ -260,6 +260,20 @@ void pktbuf_test() {
 		return;
 	}
 
+	pktbuf_seek(dest, 0);
+	pktbuf_fill(dest, 53, pktbuf_total(dest));
+	plat_memset(read_tmp, 0, sizeof(read_tmp));
+	pktbuf_seek(dest, 0);
+	pktbuf_read(dest, (uint8_t *)read_tmp, pktbuf_total(dest));
+
+	char *ptr = (char *)read_tmp;
+	for (int i = 0; i < pktbuf_total(dest); i++) {
+		if (*ptr++ != 53) {
+			plat_printf("not equal");
+			return;
+		}
+	}
+
 	pktbuf_free(dest);
 	pktbuf_free(buf);
 }
