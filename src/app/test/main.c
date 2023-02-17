@@ -208,6 +208,7 @@ void pktbuf_test() {
 	pktbuf_join(buf, pktbuf_alloc(32));
 	pktbuf_join(buf, pktbuf_alloc(38));
 	pktbuf_join(buf, pktbuf_alloc(512));
+	pktbuf_join(buf, pktbuf_alloc(1000));
 
 	pktbuf_reset_acc(buf);
 
@@ -216,6 +217,17 @@ void pktbuf_test() {
 		temp[i] = i;
 	}
 	pktbuf_write(buf, (uint8_t*)temp, pktbuf_total(buf));
+
+	static uint16_t read_tmp[1000];
+	plat_memset(read_tmp, 0, sizeof(read_tmp));
+
+	//从数据包的开始
+	pktbuf_reset_acc(buf);
+	pktbuf_read(buf, (uint8_t *)read_tmp, pktbuf_total(buf));
+	if (plat_memcmp(temp, read_tmp, pktbuf_total(buf)) != 0) {
+		plat_printf("not equal");
+		return;
+	}
 }
 
 void basic_test(void) {
