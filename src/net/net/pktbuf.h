@@ -44,5 +44,6 @@ net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont);
 net_err_t pktbuf_remove_header(pktbuf_t *buf, int size);
 //从尾部调(如果头部有空,是不管的)
 net_err_t pktbuf_resize(pktbuf_t *buf, int to_size);
+net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src);
 
 #endif
