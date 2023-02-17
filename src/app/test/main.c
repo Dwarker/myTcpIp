@@ -228,6 +228,24 @@ void pktbuf_test() {
 		plat_printf("not equal");
 		return;
 	}
+
+	//测试数据包定位
+	plat_memset(read_tmp, 0, sizeof(read_tmp));
+	pktbuf_seek(buf, 18 * 2);
+	pktbuf_read(buf, (uint8_t *)read_tmp, 56);
+	if (plat_memcmp(temp + 18, read_tmp, 56) != 0) {
+		plat_printf("not equal");
+		return;
+	}
+
+	//测试跨数据块定位
+	plat_memset(read_tmp, 0, sizeof(read_tmp));
+	pktbuf_seek(buf, 85 * 2);
+	pktbuf_read(buf, (uint8_t *)read_tmp, 256);
+	if (plat_memcmp(temp + 85, read_tmp, 256) != 0) {
+		plat_printf("not equal");
+		return;
+	}
 }
 
 void basic_test(void) {

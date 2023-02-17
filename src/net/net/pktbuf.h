@@ -18,10 +18,10 @@ typedef struct _pktbuf_t {
     nlist_t blk_list;
     nlist_node_t node;  //用来链接数据包
 
-    //数据可能是不连续的,所有逻辑上从pos位置开始
+    //数据可能是不连续的,所以逻辑上从pos位置开始
     //查找就可以了,但是实际上分布在不同的数据包中,
     //所以新增curr_blk变量指向pos位置在哪个数据包中,
-    //再新增blk_offset指向逻辑上的pos位置,在curr_blk数据包的哪个位置
+    //再新增blk_offset指向在curr_blk数据包的哪个位置
     int pos;//当前读取的数据位置
     pktblk_t *curr_blk;//
     uint8_t *blk_offset;
@@ -64,5 +64,6 @@ void pktbuf_reset_acc(pktbuf_t *buf);
 //写数据
 net_err_t pktbuf_write (pktbuf_t *buf, uint8_t *src, int size);
 net_err_t pktbuf_read (pktbuf_t *buf, uint8_t *dest, int size);
+net_err_t pktbuf_seek (pktbuf_t *buf, int offset);
 
 #endif
