@@ -2,6 +2,7 @@
 #include "dbg.h"
 #include "mblock.h"
 #include "nlocker.h"
+#include "sys.h"
 
 #if 0
 typedef struct _pktblk_t {
@@ -366,5 +367,54 @@ net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src) {
 
     pktbuf_free(src);
     display_check_buf(dest);
+    return NET_ERR_OK;
+}
+
+net_err_t pktbuf_set_cont(pktbuf_t *buf, int size) {
+    //合并的大小超过了整个数据包链表的总大小
+    if (size > buf->total_size) {
+        dbg_error(DBG_BUF, "size %d > total_size %d\n", size, buf->total_size);
+        return NET_ERR_SIZE;
+    }
+
+    //要合并的大小超过一个数据包的大小
+    if (size > PKTBUF_BLK_SIZE) {
+        dbg_error(DBG_BUF, "size too big: %d > %d", size, PKTBUF_BLK_SIZE);
+        return NET_ERR_SIZE;
+    }
+    
+    //不需要合并的情况
+    pktblk_t *first_blk = pktbuf_first_blk(buf);
+    if (size <= first_blk->size) {
+        display_check_buf(buf);
+        return NET_ERR_OK;
+    }
+    uint8_t *dest = first_blk->payload;
+    for (int i = 0; i < first_blk->size; i++) {
+        *dest++ = first_blk->data[i];
+    }
+    first_blk->data = first_blk->payload;
+    
+    pktblk_t *curr_blk = pktblk_blk_next(first_blk);
+    int remain_size = size - first_blk->size;//剩下要合并的大小
+    while (remain_size && curr_blk) {
+        int curr_size = (curr_blk->size > remain_size) ? remain_size : curr_blk->size;
+
+        plat_memcpy(dest, curr_blk->data, curr_size);
+        dest += curr_size;
+        curr_blk->data += curr_size;//该块的包头已被合并,故调整数据起始位置
+        curr_blk->size -= curr_size;
+        first_blk->size += curr_size;
+        remain_size -= curr_size;
+
+        //搬运后判断该包是否还有数据,没有则删除
+        if (curr_blk->size == 0) {
+            pktblk_t *next_blk = pktblk_blk_next(curr_blk);
+            nlist_remove(&buf->blk_list, &curr_blk->node);
+            pktblock_free(curr_blk);
+            curr_blk = next_blk;
+        }
+    }
+    display_check_buf(buf);
     return NET_ERR_OK;
 }

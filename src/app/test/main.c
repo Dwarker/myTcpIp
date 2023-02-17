@@ -184,6 +184,21 @@ void pktbuf_test() {
 	pktbuf_t *sbuf = pktbuf_alloc(892);
 	pktbuf_join(buf, sbuf);
 	pktbuf_free(buf);
+
+	//测试合并不连续的数据的数据包
+	buf = pktbuf_alloc(32);
+	pktbuf_join(buf, pktbuf_alloc(4));
+	pktbuf_join(buf, pktbuf_alloc(16));
+	pktbuf_join(buf, pktbuf_alloc(54));
+	pktbuf_join(buf, pktbuf_alloc(32));
+	pktbuf_join(buf, pktbuf_alloc(38));
+
+	pktbuf_set_cont(buf, 44);//将不连续的44个字节合并
+	pktbuf_set_cont(buf, 60);
+	pktbuf_set_cont(buf, 44);
+	pktbuf_set_cont(buf, 128);
+	pktbuf_set_cont(buf, 135);
+	pktbuf_free(buf);
 }
 
 void basic_test(void) {

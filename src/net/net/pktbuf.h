@@ -45,5 +45,7 @@ net_err_t pktbuf_remove_header(pktbuf_t *buf, int size);
 //从尾部调(如果头部有空,是不管的)
 net_err_t pktbuf_resize(pktbuf_t *buf, int to_size);
 net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src);
+//将不连续的数据合并成一个包
+net_err_t pktbuf_set_cont(pktbuf_t *buf, int size);
 
 #endif
