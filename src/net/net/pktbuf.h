@@ -18,6 +18,8 @@ typedef struct _pktbuf_t {
     nlist_t blk_list;
     nlist_node_t node;  //用来链接数据包
 
+    int ref;
+
     //数据可能是不连续的,所以逻辑上从pos位置开始
     //查找就可以了,但是实际上分布在不同的数据包中,
     //所以新增curr_blk变量指向pos位置在哪个数据包中,
@@ -50,6 +52,12 @@ static int inline pktbuf_total (pktbuf_t *buf) {
     return buf->total_size;
 }
 
+//获取第一个数据包的数据起始位置
+static inline uint8_t* pktbuf_data(pktbuf_t *buf) {
+    pktblk_t *first = pktbuf_first_blk(buf);
+    return first ? first->data : (uint8_t *)0;
+}
+
 //size:新增头部大小, cont:头部是否连续
 net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont);
 //size:移除多大的空间
@@ -61,6 +69,8 @@ net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src);
 net_err_t pktbuf_set_cont(pktbuf_t *buf, int size);
 //重置访问字段
 void pktbuf_reset_acc(pktbuf_t *buf);
+
+//下面的接口都是对当前数据块的处理
 //写数据
 net_err_t pktbuf_write (pktbuf_t *buf, uint8_t *src, int size);
 net_err_t pktbuf_read (pktbuf_t *buf, uint8_t *dest, int size);
@@ -68,5 +78,6 @@ net_err_t pktbuf_seek (pktbuf_t *buf, int offset);
 //从src的pos位置拷贝至dest的pos位置
 net_err_t pktbuf_copy (pktbuf_t *dest, pktbuf_t *src, int size);
 net_err_t pktbuf_fill (pktbuf_t *buf, uint8_t value, int size);
+void pktbuf_inc_ref (pktbuf_t *buf);
 
 #endif

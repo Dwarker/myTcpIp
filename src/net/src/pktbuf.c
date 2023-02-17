@@ -91,8 +91,8 @@ net_err_t pktbuf_init (void) {
     dbg_info(DBG_BUF, "init pktbuf");
 
     nlocker_init(&locker, NLOCKER_THREAD);
-    mblock_init(&block_list, block_buffer, sizeof(pktblk_t), PKTBUF_BLK_CNT, NLOCKER_THREAD);
-    mblock_init(&pktbuf_list, pktbuf_buffer, sizeof(pktbuf_t), PKTBUF_BUF_CNT, NLOCKER_THREAD);
+    mblock_init(&block_list, block_buffer, sizeof(pktblk_t), PKTBUF_BLK_CNT, NLOCKER_NONE);
+    mblock_init(&pktbuf_list, pktbuf_buffer, sizeof(pktbuf_t), PKTBUF_BUF_CNT, NLOCKER_NONE);
     
     dbg_info(DBG_BUF, "init done");
     return NET_ERR_OK;
@@ -100,7 +100,9 @@ net_err_t pktbuf_init (void) {
 
 static pktblk_t *pktblock_alloc (void) {
     //arm中可能会被中断调用,所以不能用阻塞,这里传-1
+    nlocker_lock(&locker);
     pktblk_t *block = mblock_alloc(&block_list, -1);
+    nlocker_unlock(&locker);
     if (block) {
         block->size = 0;
         block->data = (uint8_t *)0;
@@ -110,7 +112,9 @@ static pktblk_t *pktblock_alloc (void) {
 }
 
 static void pktblock_free (pktblk_t *block) {
+    nlocker_lock(&locker);
     mblock_free(&block_list, block);
+    nlocker_unlock(&locker);
 }
 
 static void pktblock_free_list (pktblk_t* first) {
@@ -131,7 +135,9 @@ static pktblk_t *pktblock_alloc_list (int size, int add_front) {
         if (!new_block) {
             dbg_error(DBG_BUF, "no buffer for alloc(%d)", size);
             //前面已有部分分配,此时若分配失败,则已分配部分释放掉
-
+            if (first_block) {
+                pktblock_free_list(first_block);
+            }
             return (pktblk_t *)0;
         }
 
@@ -191,23 +197,35 @@ static void pktbuf_insert_blk_list(pktbuf_t *buf, pktblk_t *first_blk, int add_l
         }
     }
 }
+
+void pktbuf_inc_ref (pktbuf_t *buf) {
+    nlocker_lock(&locker);
+    buf->ref++;
+    nlocker_unlock(&locker);
+}
+
 pktbuf_t *pktbuf_alloc (int size) {
     //pktblock_alloc_list(size, 0);//尾插法
     //pktblock_alloc_list(size, 1);//头插法
+    nlocker_lock(&locker);
     pktbuf_t *buf = mblock_alloc(&pktbuf_list, -1);
+    nlocker_unlock(&locker);
     if (!buf) {
         dbg_error(DBG_BUF, "no buffer");
         return (pktbuf_t *)0;
     }
 
     buf->total_size = 0;
+    buf->ref = 1;   //分配出去了,引用加1
     nlist_init(&buf->blk_list);
     nlist_node_init(&buf->node);
 
     if (size) {
         pktblk_t *block = pktblock_alloc_list(size, 1);
         if (!block) {
+            nlocker_lock(&locker);
             mblock_free(&pktbuf_list, buf);
+            nlocker_unlock(&locker);
             return (pktbuf_t *)0;
         }
 
@@ -221,11 +239,17 @@ pktbuf_t *pktbuf_alloc (int size) {
     return buf;
 }
 void pktbuf_free (pktbuf_t *buf) {
-    pktblock_free_list(pktbuf_first_blk(buf));
-    mblock_free(&pktbuf_list, buf);
+    nlocker_lock(&locker);
+    if (--buf->ref == 0) {
+        pktblock_free_list(pktbuf_first_blk(buf));
+        mblock_free(&pktbuf_list, buf);
+    }
+    nlocker_unlock(&locker);
 }
 
 net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     pktblk_t *block = pktbuf_first_blk(buf);
 
     //前面有多余的存储空间可以存储包头
@@ -270,6 +294,8 @@ net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont) {
 }
 
 net_err_t pktbuf_remove_header(pktbuf_t *buf, int size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     pktblk_t *block = pktbuf_first_blk(buf);
 
     while (size) {
@@ -298,6 +324,8 @@ net_err_t pktbuf_remove_header(pktbuf_t *buf, int size) {
 }
 
 net_err_t pktbuf_resize(pktbuf_t *buf, int to_size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     if (to_size == buf->total_size) {
         return NET_ERR_OK;
     }
@@ -373,6 +401,9 @@ net_err_t pktbuf_resize(pktbuf_t *buf, int to_size) {
 }
 
 net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src) {
+    dbg_assert(dest->ref != 0, "dest ref == 0");
+    dbg_assert(src->ref != 0, "src ref == 0");
+
     pktblk_t *first;
 
     while ((first = pktbuf_first_blk(src))) {
@@ -386,6 +417,8 @@ net_err_t pktbuf_join(pktbuf_t *dest, pktbuf_t *src) {
 }
 
 net_err_t pktbuf_set_cont(pktbuf_t *buf, int size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     //合并的大小超过了整个数据包链表的总大小
     if (size > buf->total_size) {
         dbg_error(DBG_BUF, "size %d > total_size %d\n", size, buf->total_size);
@@ -435,6 +468,8 @@ net_err_t pktbuf_set_cont(pktbuf_t *buf, int size) {
 }
 
 void pktbuf_reset_acc(pktbuf_t *buf) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     if (buf) {
         buf->pos = 0;
         buf->curr_blk = pktbuf_first_blk(buf);
@@ -443,6 +478,8 @@ void pktbuf_reset_acc(pktbuf_t *buf) {
 }
 
 static void move_forward (pktbuf_t *buf, int size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     buf->pos += size;
     buf->blk_offset += size;
 
@@ -458,6 +495,8 @@ static void move_forward (pktbuf_t *buf, int size) {
 }
 
 net_err_t pktbuf_write (pktbuf_t *buf, uint8_t *src, int size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     if (!src || !size) {
         return NET_ERR_PARAM;
     }
@@ -484,6 +523,8 @@ net_err_t pktbuf_write (pktbuf_t *buf, uint8_t *src, int size) {
 }
 
 net_err_t pktbuf_read (pktbuf_t *buf, uint8_t *dest, int size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     if (!dest || !size) {
         return NET_ERR_PARAM;
     }
@@ -511,6 +552,8 @@ net_err_t pktbuf_read (pktbuf_t *buf, uint8_t *dest, int size) {
 }
 
 net_err_t pktbuf_seek (pktbuf_t *buf, int offset) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
     if (buf->pos == offset) {
         return NET_ERR_OK;
     }
@@ -543,6 +586,9 @@ net_err_t pktbuf_seek (pktbuf_t *buf, int offset) {
 }
 
 net_err_t pktbuf_copy (pktbuf_t *dest, pktbuf_t *src, int size) {
+    dbg_assert(dest->ref != 0, "dest ref == 0");
+    dbg_assert(src->ref != 0, "src ref == 0");
+
     if ((total_blk_remain(dest) < size) 
         || total_blk_remain(src) < size) {
         return NET_ERR_SIZE;
@@ -566,7 +612,9 @@ net_err_t pktbuf_copy (pktbuf_t *dest, pktbuf_t *src, int size) {
 }
 
 net_err_t pktbuf_fill (pktbuf_t *buf, uint8_t value, int size) {
-       if (!size) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
+    if (!size) {
         return NET_ERR_PARAM;
     }
 
