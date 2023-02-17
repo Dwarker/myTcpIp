@@ -168,11 +168,17 @@ void pktbuf_test() {
 	}
 	pktbuf_free(buf);
 
-	//测试包的扩大
+	//测试包的扩大和缩小
 	buf = pktbuf_alloc(8);
 	pktbuf_resize(buf, 32);
 	pktbuf_resize(buf, 288);
 	pktbuf_resize(buf, 4922);
+	pktbuf_resize(buf, 1921);
+	pktbuf_resize(buf, 288);
+	pktbuf_resize(buf, 32);
+	pktbuf_resize(buf, 0);
+
+	pktbuf_free(buf);
 }
 
 void basic_test(void) {

@@ -294,6 +294,10 @@ net_err_t pktbuf_resize(pktbuf_t *buf, int to_size) {
         }
 
         pktbuf_insert_blk_list(buf, blk, 1);//尾插法
+    } else if (to_size == 0) {
+        pktblock_free_list(pktbuf_first_blk(buf));
+        buf->total_size = 0;
+        nlist_init(&buf->blk_list);
     } else if (to_size > buf->total_size) {
         //分为两种情况,一种是当前包的剩余空间满足,另外一种则是需要新增一个甚至多个包
         pktblk_t *tail_blk = pktbuf_last_blk(buf);
@@ -309,12 +313,43 @@ net_err_t pktbuf_resize(pktbuf_t *buf, int to_size) {
                 dbg_error(DBG_BUF, "no block");
                 return NET_ERR_MEM;
             }
-            
+
             tail_blk->size += remain_size;//当前已有的空间利用上
             buf->total_size += remain_size;
 
             pktbuf_insert_blk_list(buf, new_blks, 1);//尾插法插入
         }
+    } else {
+        //缩小数据包
+        int total_size = 0;
+        pktblk_t *tail_blk;
+        for (tail_blk = pktbuf_first_blk(buf); tail_blk; tail_blk = pktblk_blk_next(tail_blk)) {
+            total_size += tail_blk->size;
+            if (total_size >= to_size) {
+                break;
+            }
+        }
+
+        if (tail_blk == (pktblk_t *)0) {
+            return NET_ERR_SIZE;
+        }
+
+        total_size = 0;
+        pktblk_t *curr_blk = pktblk_blk_next(tail_blk);
+        while (curr_blk) {
+            pktblk_t *next_blk = pktblk_blk_next(curr_blk);
+
+            total_size += curr_blk->size;
+            nlist_remove(&buf->blk_list, &curr_blk->node);
+            pktblock_free(curr_blk);
+            curr_blk = next_blk;
+        }
+        //最后一个数据包占有小部分数据,而这部分数据需要移除,调整大小即可
+        //总数据包的大小 - 已经移除的大小,结果其实还包含了一个数据包中的一小部分,
+        //这个结果减去需要保留的大小,就是剩下的要移除的一小部分大小(..有点绕)
+        tail_blk->size -= (buf->total_size - total_size - to_size);
+
+        buf->total_size = to_size;
     }
 
     display_check_buf(buf);
