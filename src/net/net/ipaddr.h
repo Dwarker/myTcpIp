@@ -16,4 +16,7 @@ typedef struct _ipaddr_t {
     };
 }ipaddr_t;
 
+//初始化时,填入缺省ip值
+void ipaddr_set_any (ipaddr_t *ip);
+
 #endif
