@@ -21,6 +21,14 @@ typedef enum _netif_type_t {
     NETIF_TYPE_SIZE,
 }netif_type_t;
 
+struct _netif_t;
+//争对网卡硬件的操作接口
+typedef struct _netif_ops_t {
+    net_err_t (*open) (struct _netif_t *netif, void *data);
+    void (*close) (struct _netif_t *netif);
+    net_err_t (*xmit) (struct _netif_t *netif);
+}netif_ops_t;
+
 typedef struct _netif_t {
     char name[NETIF_NAME_SIZE];
     netif_haddr_t hwaddr;
@@ -39,6 +47,9 @@ typedef struct _netif_t {
         NETIF_ACTIVE,
     }state;
 
+    const netif_ops_t *ops;//正对网卡硬件的接口
+    void *ops_data;//配合ops使用(给底层驱动使用)
+
     nlist_node_t node;//用于链接其他网卡
 
     fixq_t in_q;    //网卡输入队列
@@ -48,5 +59,5 @@ typedef struct _netif_t {
 }netif_t;
 
 net_err_t netif_init(void);
-netif_t *netif_open(const char *dev_name);
+netif_t *netif_open(const char *dev_name, const netif_ops_t *ops, void *ops_data);
 #endif
