@@ -5,6 +5,7 @@
 #include "nlist.h"
 #include "fixq.h"
 #include "net_cfg.h"
+#include "net_err.h"
 
 //网络接口
 typedef struct _netif_hwaddr_t {
@@ -45,5 +46,7 @@ typedef struct _netif_t {
     fixq_t out_q;   //网卡输出队列
     void *out_q_buf[NETIF_OUTQ_SIZE];
 }netif_t;
+
+net_err_t netif_init(void);
 
 #endif
