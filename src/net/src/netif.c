@@ -2,6 +2,7 @@
 #include "mblock.h"
 #include "dbg.h"
 #include "pktbuf.h"
+#include "exmsg.h"
 
 static netif_t netif_buffer[NETIF_DEV_CNT];
 static mblock_t netif_mblock;
@@ -208,4 +209,49 @@ net_err_t netif_close(netif_t *netif) {
 }
 void netif_set_default(netif_t *netif) {
     netif_default = netif;
+}
+
+net_err_t netif_put_in(netif_t *netif, pktbuf_t *buf, int tmo) {
+    net_err_t err = fixq_send(&netif->in_q, buf, tmo);
+    if (err < 0) {
+        dbg_warning(DBG_NETIF, "netif in_q full");
+        return NET_ERR_FULL;
+    }
+
+    //通知工作线程,网卡接收到了一个消息(实际是将一个通知消息放到一个队列里面)
+    exmsg_netif_in();
+    return NET_ERR_OK;
+}
+pktbuf_t *netif_get_in(netif_t *netif, int tmo) {
+    pktbuf_t *buf = fixq_recv(&netif->in_q, tmo);
+    if (buf) {
+        pktbuf_reset_acc(buf);
+        return buf;
+    }
+
+    dbg_info(DBG_NETIF, "netif in_q empty");
+    return (pktbuf_t *)0;
+}
+//往输出队列写
+net_err_t netif_put_out(netif_t *netif, pktbuf_t *buf, int tmo) {
+    net_err_t err = fixq_send(&netif->out_q, buf, tmo);
+    if (err < 0) {
+        dbg_warning(DBG_NETIF, "netif out_q full");
+        return NET_ERR_FULL;
+    }
+
+    exmsg_netif_in();
+    return NET_ERR_OK;
+}
+
+//从输出队列取出数据包,给网卡进行发送
+pktbuf_t *netif_get_out(netif_t *netif, int tmo) {
+    pktbuf_t *buf = fixq_recv(&netif->out_q, tmo);
+    if (buf) {
+        pktbuf_reset_acc(buf);
+        return buf;
+    }
+
+    dbg_info(DBG_NETIF, "netif out_q empty");
+    return (pktbuf_t *)0;
 }

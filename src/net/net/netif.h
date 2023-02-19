@@ -6,6 +6,7 @@
 #include "fixq.h"
 #include "net_cfg.h"
 #include "net_err.h"
+#include "pktbuf.h"
 
 //网络接口
 typedef struct _netif_hwaddr_t {
@@ -66,4 +67,9 @@ net_err_t netif_set_active(netif_t *netif);
 net_err_t netif_set_deactive(netif_t *netif);
 net_err_t netif_close(netif_t *netif);
 void netif_set_default(netif_t *netif);
+
+net_err_t netif_put_in(netif_t *netif, pktbuf_t *buf, int tmo);
+pktbuf_t *netif_get_in(netif_t *netif, int tmo);
+net_err_t netif_put_out(netif_t *netif, pktbuf_t *buf, int tmo);
+pktbuf_t *netif_get_out(netif_t *netif, int tmo);
 #endif
