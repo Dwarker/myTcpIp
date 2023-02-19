@@ -8,6 +8,55 @@ static mblock_t netif_mblock;
 static nlist_t netif_list;//用来组织打开的网络接口
 static netif_t *netif_default;//默认使用该网卡进行发送
 
+#if DBG_DISP_ENABLED(DBG_NETIF)
+void display_netif_list (void) {
+    plat_printf("netif list:\n");
+
+    nlist_node_t *node;
+    nlist_for_each(node, &netif_list) {
+        netif_t *netif = nlist_entry(node, netif_t, node);
+
+        plat_printf("%s:", netif->name);
+        switch (netif->state)
+        {
+        case NETIF_CLOSED:
+            plat_printf("  %s  ", "closed");
+            break;
+        case NETIF_OPENED:
+            plat_printf("  %s  ", "opened");
+            break;
+        case NETIF_ACTIVE:
+            plat_printf("  %s  ", "active");
+            break;
+        default:
+            break;
+        }
+
+        switch (netif->type)
+        {
+        case NETIF_TYPE_ETHER:
+            plat_printf("  %s  ", "ether");
+            break;
+        case NETIF_TYPE_LOOP:
+            plat_printf("  %s  ", "loop");
+            break;
+        default:
+            break;
+        }
+
+        plat_printf(" mtu=%d \n", netif->mtu);
+        dbg_dump_hwaddr("hwaddr:", netif->hwaddr.addr, netif->hwaddr.len);
+        dbg_dump_ip(" ip:", &netif->ipaddr);
+        dbg_dump_ip(" netmask:", &netif->netmask);
+        dbg_dump_ip(" gateway:", &netif->gateway);
+
+        plat_printf("\n");
+    }
+}
+#else
+#define display_netif_list()
+#endif
+
 net_err_t netif_init (void) {
     dbg_info(DBG_NETIF, "init netif\n");
 
@@ -76,6 +125,8 @@ netif_t *netif_open(const char *dev_name, const netif_ops_t *ops, void *ops_data
 
     nlist_insert_last(&netif_list, &netif->node);
 
+    display_netif_list();
+
     return netif;
 free_return:
     if (netif->state == NETIF_OPENED) {
@@ -105,6 +156,9 @@ net_err_t netif_set_active(netif_t *netif) {
         return NET_ERR_STATE;
     }
     netif->state = NETIF_ACTIVE;
+
+    display_netif_list();
+
     return NET_ERR_OK;
 }
 net_err_t netif_set_deactive(netif_t *netif) {
@@ -128,6 +182,8 @@ net_err_t netif_set_deactive(netif_t *netif) {
     }
 
     netif->state = NETIF_OPENED;
+
+    display_netif_list();
 
     return NET_ERR_OK;
 }
