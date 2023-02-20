@@ -217,9 +217,10 @@ net_err_t netif_put_in(netif_t *netif, pktbuf_t *buf, int tmo) {
         dbg_warning(DBG_NETIF, "netif in_q full");
         return NET_ERR_FULL;
     }
+    
+    //通知工作线程,网卡接收到了一个数据包(这个通知实际是将一个通知消息放到一个队列里面)
+    exmsg_netif_in(netif);
 
-    //通知工作线程,网卡接收到了一个消息(实际是将一个通知消息放到一个队列里面)
-    exmsg_netif_in();
     return NET_ERR_OK;
 }
 pktbuf_t *netif_get_in(netif_t *netif, int tmo) {
@@ -240,7 +241,6 @@ net_err_t netif_put_out(netif_t *netif, pktbuf_t *buf, int tmo) {
         return NET_ERR_FULL;
     }
 
-    exmsg_netif_in();
     return NET_ERR_OK;
 }
 
@@ -254,4 +254,17 @@ pktbuf_t *netif_get_out(netif_t *netif, int tmo) {
 
     dbg_info(DBG_NETIF, "netif out_q empty");
     return (pktbuf_t *)0;
+}
+
+//往指定的网络接口(网卡)发送数据包
+net_err_t netif_out(netif_t *netif, ipaddr_t *ipaddr, pktbuf_t *buf) {
+    //放到网卡的队列中
+    net_err_t err = netif_put_out(netif, buf, -1);//这里不需要等待,不能影响应用层发送数据
+    if (err < 0) {
+        dbg_info(DBG_NETIF, "send failed, queue full");
+        return err;
+    }
+
+    //驱动网卡进行发送,xmit是由网卡驱动实现
+    return netif->ops->xmit(netif);
 }

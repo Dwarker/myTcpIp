@@ -17,54 +17,29 @@
 #include "mblock.h"
 #include "pktbuf.h"
 #include "netif.h"
-
-static sys_sem_t sem;
-static sys_mutex_t mutex;
-static int count;
-
-static char buffer[100];
-static int write_index, read_index;
-static sys_sem_t read_sem, write_sem;
-
-void thread1_entry (void *arg) {
-	for (int i = 0; i < 2 * sizeof(buffer); i++) {
-		sys_sem_wait(read_sem, 0);
-		plat_printf("bbb\n");
-		char data = buffer[read_index++];
-
-		if (read_index >= sizeof(buffer)) {
-			read_index = 0;
-		}
-
-		sys_sem_notify(write_sem);
-
-		plat_printf("this is thread1: %d\n", data);
-
-		sys_sleep(100);
-	}
-}
-
-void thread2_entry (void *arg) {
-	
-	for (int i = 0; i < 2 * sizeof(buffer); i++) {
-		sys_sem_wait(write_sem, 0);
-
-		buffer[write_index++] = i;
-
-		if (write_index >= sizeof(buffer)) {
-			write_index = 0;
-		}
-
-		plat_printf("this is thread2: %d\n", i);
-
-		sys_sem_notify(read_sem);
-		plat_printf("AAA\n");
-	}
-}
 #include "netif_pcap.h"
 
+pcap_data_t netdev0_data = {.ip = netdev0_phy_ip, .hwaddr = netdev0_hwaddr};
+
 net_err_t netdev_init (void) {
-	netif_pcap_open();
+	dbg_info(DBG_NETIF, "init netif0");
+
+    netif_t *netif = netif_open("netif0", &netdev_ops, &netdev0_data);
+    if (!netif) {
+        dbg_error(DBG_NETIF, "open netif error.");
+        return NET_ERR_NONE;
+    }
+
+    ipaddr_t ip, mask, gw;
+    ipaddr_from_str(&ip, netdev0_ip);
+    ipaddr_from_str(&mask, netdev0_mask);
+	ipaddr_from_str(&gw, netdev0_gw);
+
+    netif_set_addr(netif, &ip, &mask, &gw);
+
+    netif_set_active(netif);
+
+    dbg_info(DBG_NETIF, "init done.");
 	return NET_ERR_OK;
 }
 
@@ -320,10 +295,10 @@ int main (void) {
 	#if 1
 	net_init();
 
-	basic_test();
-
-	net_start();
+	//basic_test();
 	netdev_init();
+	net_start();
+
 	#endif
 
 	while (1) {
