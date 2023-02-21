@@ -40,12 +40,29 @@ void recv_thread (void *arg) {
     
 }
 
-//网卡数据发送线程
+//网卡数据发送线程:暂时使用该线程发送数据到网卡
 void xmit_thread (void *arg) {
     plat_printf("xmit thread is running...\n");
+    
+    netif_t *netif = (netif_t *)arg;
+    pcap_t *pcap = (pcap_t *)netif->ops_data;
+    static uint8_t rw_buffer[1500+6+6+2];//mtu值+目的地址+源地址+类型
 
     while (1) {
-        sys_sleep(1);
+        pktbuf_t *buf = netif_get_out(netif, 0);
+        if (buf == (pktbuf_t *)0) {
+            continue;
+        }
+
+        int total_size = buf->total_size;
+        plat_memset(rw_buffer, 0, sizeof(rw_buffer));
+        pktbuf_read(buf, rw_buffer, total_size);
+        pktbuf_free(buf);
+
+        if (pcap_inject(pcap, rw_buffer, total_size) == -1) {
+            plat_printf("pcap send failed: %s\n", pcap_geterr(pcap));
+            plat_printf("pcap send failed, size: %d\n", total_size);
+        }
     }
     
 }
