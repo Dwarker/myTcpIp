@@ -4,6 +4,7 @@
 #include "exmsg.h"
 #include "pcap.h"
 #include "dbg.h"
+#include "ether.h"
 
 //网卡数据接收线程
 void recv_thread (void *arg) {
@@ -77,7 +78,7 @@ static net_err_t netif_pcap_open (struct _netif_t *netif, void *data) {
     }
 
     netif->type = NETIF_TYPE_ETHER;
-    netif->mtu = 1500;
+    netif->mtu = ETHER_MTU;
     netif->ops_data = pcap;
     netif_set_hwaddr(netif, dev_data->hwaddr, 6);
 
