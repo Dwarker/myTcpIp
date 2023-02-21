@@ -9,6 +9,8 @@ static mblock_t netif_mblock;
 static nlist_t netif_list;//用来组织打开的网络接口
 static netif_t *netif_default;//默认使用该网卡进行发送
 
+static const link_layer_t *link_layers[NETIF_TYPE_SIZE];
+
 #if DBG_DISP_ENABLED(DBG_NETIF)
 void display_netif_list (void) {
     plat_printf("netif list:\n");
@@ -69,8 +71,34 @@ net_err_t netif_init (void) {
     
     netif_default = (netif_t *)0;
 
+    plat_memset((void*)link_layers, 0, sizeof(link_layers));
+
     dbg_info(DBG_NETIF, "init done\n");
     return NET_ERR_OK;
+}
+
+net_err_t netif_register_layer(int type, const link_layer_t *layer) {
+    if ((type < 0) || (type >= NETIF_TYPE_SIZE)) {
+        dbg_error(DBG_NETIF, "type error");
+        return NET_ERR_PARAM;
+    }
+
+    if (link_layers[type]) {
+        dbg_error(DBG_NETIF, "link layer exist.\n");
+        return NET_ERR_EXIST;
+    }
+
+    link_layers[type] = layer;
+    return NET_ERR_OK;
+}
+
+static const link_layer_t *netif_get_layer(int type) {
+    if ((type < 0) || (type >= NETIF_TYPE_SIZE)) {
+        dbg_error(DBG_NETIF, "type error");
+        return NET_ERR_PARAM;
+    }
+
+    return link_layers[type];
 }
 
 netif_t *netif_open(const char *dev_name, const netif_ops_t *ops, void *ops_data) {
@@ -126,6 +154,12 @@ netif_t *netif_open(const char *dev_name, const netif_ops_t *ops, void *ops_data
         goto free_return;
     }
 
+    netif->link_layer = netif_get_layer(netif->type);
+    if ((!netif->link_layer) && (netif->type != NETIF_TYPE_LOOP)) {
+        dbg_error(DBG_NETIF, "no link layer netif name: %s\n", dev_name);
+        goto free_return;
+    }
+
     nlist_insert_last(&netif_list, &netif->node);
 
     display_netif_list();
@@ -163,6 +197,16 @@ net_err_t netif_set_active(netif_t *netif) {
         netif_set_default(netif);
     }
 
+    //激活后就可以使用协议栈了,那么在这里可以打开下层协议
+    //(本质上就是初始化软件层面链路层的数据)
+    if (netif->link_layer) {
+        net_err_t err = netif->link_layer->open(netif);
+        if (err < 0) {
+            dbg_info(DBG_NETIF, "active error.\n");
+            return err;
+        }
+    }
+
     netif->state = NETIF_ACTIVE;
 
     display_netif_list();
@@ -173,6 +217,11 @@ net_err_t netif_set_deactive(netif_t *netif) {
     if (netif->state != NETIF_ACTIVE) {
         dbg_error(DBG_NETIF, "netif is not actived.");
         return NET_ERR_STATE;
+    }
+
+    //链路层协议的关闭
+    if (netif->link_layer) {
+        netif->link_layer->close(netif);
     }
 
     pktbuf_t *buf;

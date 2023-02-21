@@ -30,6 +30,17 @@ typedef struct _netif_ops_t {
     net_err_t (*xmit) (struct _netif_t *netif);
 }netif_ops_t;
 
+struct _netif_t;
+//链路层接口,给上层IP层使用,而不是下层
+typedef struct _link_layer_t {
+    netif_type_t type;  //链路类型:以太网,wifi
+
+    net_err_t (*open) (struct _netif_t *netif);
+    void (*close) (struct _netif_t *netif);
+    net_err_t (*in) (struct _netif_t *netif, pktbuf_t *buf);
+    net_err_t (*out) (struct _netif_t *netif, ipaddr_t *dest, pktbuf_t *buf);
+}link_layer_t;
+
 typedef struct _netif_t {
     char name[NETIF_NAME_SIZE];
     netif_haddr_t hwaddr;
@@ -50,6 +61,8 @@ typedef struct _netif_t {
 
     const netif_ops_t *ops;//正对网卡硬件的接口
     void *ops_data;//配合ops使用(给底层驱动使用)
+
+    const link_layer_t *link_layer;
 
     nlist_node_t node;//用于链接其他网卡
 
@@ -75,4 +88,6 @@ pktbuf_t *netif_get_out(netif_t *netif, int tmo);
 
 //往指定的网卡(即网络接口)发送数据包
 net_err_t netif_out(netif_t *netif, ipaddr_t *ipaddr, pktbuf_t *buf);
+
+net_err_t netif_register_layer(int type, const link_layer_t *layer);
 #endif
