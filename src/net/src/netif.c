@@ -108,14 +108,16 @@ netif_t *netif_open(const char *dev_name, const netif_ops_t *ops, void *ops_data
         return (netif_t *)0;
     }
 
+    netif->ops = ops;
+    netif->ops_data = ops_data;//ops->open(允许在驱动接口中修改ops_data参数)
+
     //对网卡本身进行打开
     err = ops->open(netif, ops_data);
     if (err < 0) {
         dbg_error(DBG_NETIF, "netif ops open err.");
         goto free_return;
     }
-    netif->ops = ops;
-    netif->ops_data = ops_data;
+    
     netif->state = NETIF_OPENED;
 
     //网卡驱动打开网卡存在问题
