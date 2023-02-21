@@ -95,7 +95,7 @@ net_err_t netif_register_layer(int type, const link_layer_t *layer) {
 static const link_layer_t *netif_get_layer(int type) {
     if ((type < 0) || (type >= NETIF_TYPE_SIZE)) {
         dbg_error(DBG_NETIF, "type error");
-        return NET_ERR_PARAM;
+        return (link_layer_t *)0;
     }
 
     return link_layers[type];
