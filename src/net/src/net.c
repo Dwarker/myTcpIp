@@ -6,11 +6,14 @@
 #include "netif.h"
 #include "loop.h"
 #include "ether.h"
+#include "tools.h"
 
 net_err_t net_init(void) {
     dbg_info(DBG_INIT, "init net");
 
     net_plat_init();//平台相关
+
+    tools_init();
     
     exmsg_init();
     pktbuf_init();

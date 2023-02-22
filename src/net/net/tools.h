@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "net_cfg.h"
+#include "net_err.h"
 
 //字节逆序
 static inline uint16_t swap_u16 (uint16_t v) {
@@ -29,5 +30,7 @@ static inline uint32_t swap_u32 (uint32_t v) {
 #define x_htonl(v)
 #define x_ntohl(v)
 #endif
+
+net_err_t tools_init(void);
 
 #endif
