@@ -18,6 +18,7 @@
 #include "pktbuf.h"
 #include "netif.h"
 #include "netif_pcap.h"
+#include "tools.h"
 
 pcap_data_t netdev0_data = {.ip = netdev0_phy_ip, .hwaddr = netdev0_hwaddr};
 
@@ -258,6 +259,9 @@ void basic_test(void) {
 	nlist_test();
 	mblock_test();
 	pktbuf_test();
+
+	uint32_t v1 = x_ntohl(0x12345678);
+	uint16_t v2 = x_ntohs(0x1234);
 }
 
 #define DBG_TEST DBG_LEVEL_INFO
@@ -295,7 +299,7 @@ int main (void) {
 	#if 1
 	net_init();
 
-	//basic_test();
+	basic_test();
 	netdev_init();
 	net_start();
 
