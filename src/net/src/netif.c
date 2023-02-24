@@ -3,6 +3,8 @@
 #include "dbg.h"
 #include "pktbuf.h"
 #include "exmsg.h"
+#include "protocol.h"
+#include "ether.h"
 
 static netif_t netif_buffer[NETIF_DEV_CNT];
 static mblock_t netif_mblock;
@@ -309,13 +311,25 @@ pktbuf_t *netif_get_out(netif_t *netif, int tmo) {
 
 //往指定的网络接口(网卡)发送数据包
 net_err_t netif_out(netif_t *netif, ipaddr_t *ipaddr, pktbuf_t *buf) {
-    //放到网卡的队列中
-    net_err_t err = netif_put_out(netif, buf, -1);//这里不需要等待,不能影响应用层发送数据
-    if (err < 0) {
-        dbg_info(DBG_NETIF, "send failed, queue full");
-        return err;
-    }
+    if (netif->link_layer) {
+        net_err_t err = ether_raw_out(netif, NET_PROTOCOL_ARP, ether_broadcast_addr(), buf);
+        if (err < 0) {
+            dbg_warning(DBG_NETIF, "netif link out err");
+            return err;
+        }
+        return NET_ERR_OK;
+    } else {
+        //争对环回接口,放入输出队列中,里面调用xmit接口,将数据从输出队列中
+        //取出,并放入输入队列
+        //放到网卡的队列中
+        net_err_t err = netif_put_out(netif, buf, -1);//这里不需要等待,不能影响应用层发送数据
+        if (err < 0) {
+            dbg_info(DBG_NETIF, "send failed, queue full");
+            return err;
+        }
 
-    //驱动网卡进行发送,xmit是由网卡驱动实现
-    return netif->ops->xmit(netif);
+        //驱动网卡进行发送,xmit是由网卡驱动实现
+        return netif->ops->xmit(netif);
+    }
+    
 }

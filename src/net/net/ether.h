@@ -3,9 +3,11 @@
 
 #include "net_err.h"
 #include <stdint.h>
+#include "netif.h"
 
 #define ETHER_HWA_SIZE  6
 #define ETHER_MTU       1500
+#define ETHER_DATA_MIN  46
 
 #pragma pack(1)
 typedef struct _ether_hdr_t {
@@ -22,4 +24,9 @@ typedef struct _ether_pkt_t {
 
 net_err_t ether_init(void);
 
+//获取以太网广播地址
+const uint8_t *ether_broadcast_addr(void);
+
+//发送数据包 dest为目标网卡硬件地址
+net_err_t ether_raw_out(netif_t *netif, uint16_t protocol, const uint8_t *dest, pktbuf_t *buf);
 #endif

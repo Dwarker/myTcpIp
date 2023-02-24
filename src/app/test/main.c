@@ -40,6 +40,10 @@ net_err_t netdev_init (void) {
 
     netif_set_active(netif);
 
+	pktbuf_t *buf = pktbuf_alloc(32);
+	pktbuf_fill(buf, 0x53, 32);
+	netif_out(netif, (ipaddr_t *)0, buf);
+
     dbg_info(DBG_NETIF, "init done.");
 	return NET_ERR_OK;
 }

@@ -96,3 +96,61 @@ net_err_t ether_init(void) {
     dbg_info(DBG_ETHER, "init ether done\n");
     return NET_ERR_OK;
 }
+
+const uint8_t *ether_broadcast_addr(void) {
+    //广播地址
+    static const uint8_t broadcast[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    return broadcast;
+}
+
+//发送数据包 dest为目标网卡硬件地址
+net_err_t ether_raw_out(netif_t *netif, uint16_t protocol, const uint8_t *dest, pktbuf_t *buf) {
+    net_err_t err;
+    
+    int size = pktbuf_total(buf);
+    if (size < ETHER_DATA_MIN) {
+        dbg_info(DBG_ETHER, "resize from %d to %d", size, ETHER_DATA_MIN);
+
+        //当数据不足46字节时,需要扩充成46字节,并填充0
+        err = pktbuf_resize(buf, ETHER_DATA_MIN);
+        if (err < 0) {
+            dbg_error(DBG_ETHER, "resize error");
+            return err;
+        }
+
+        pktbuf_reset_acc(buf);
+        pktbuf_seek(buf, size);
+        pktbuf_fill(buf, 0, ETHER_DATA_MIN - size);
+
+        size = ETHER_DATA_MIN;
+    }
+
+    //填充以太网协议包头:目标地址,源地址,协议类型
+    err = pktbuf_add_header(buf, sizeof(ether_hdr_t), 1);
+    if (err < 0) {
+        dbg_error(DBG_ETHER, "add header error: %d", err);
+        return NET_ERR_SIZE;
+    }
+
+    ether_pkt_t *pkt = (ether_pkt_t*)pktbuf_data(buf);
+    plat_memcpy(pkt->hdr.dest, dest, ETHER_HWA_SIZE);
+    plat_memcpy(pkt->hdr.src, netif->hwaddr.addr, ETHER_HWA_SIZE);
+    pkt->hdr.protocol = x_htons(protocol);
+
+    display_ether_pkt("ether out", pkt, size);
+
+    //如果是A网卡发给A网卡的,直接仍到A网卡的输入队列
+    if (plat_memcmp(netif->hwaddr.addr, dest, ETHER_HWA_SIZE) == 0) {
+        return netif_put_in(netif, buf, -1);
+    } else {
+        //送入发送队列
+        err = netif_put_out(netif, buf, -1);
+        if (err < 0) {
+            dbg_warning(DBG_ETHER, "put pkt out failed.");
+            return err;
+        }
+
+        //调用对应协议的驱动接口,从发送队列取出后,进行发送
+        return netif->ops->xmit(netif);
+    }
+}
