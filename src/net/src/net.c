@@ -7,6 +7,7 @@
 #include "loop.h"
 #include "ether.h"
 #include "tools.h"
+#include "timer.h"
 
 net_err_t net_init(void) {
     dbg_info(DBG_INIT, "init net");
@@ -18,6 +19,7 @@ net_err_t net_init(void) {
     exmsg_init();
     pktbuf_init();
     netif_init();
+    net_timer_init();
     loop_init();
     ether_init();
 
