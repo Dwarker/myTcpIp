@@ -107,3 +107,50 @@ void net_timer_remove(net_timer_t *timer) {
 
     display_timer_list();
 }
+
+net_err_t net_timer_check_tmo(int diff_ms) {
+    nlist_t wait_list;
+    nlist_init(&wait_list);
+
+    nlist_node_t *node = nlist_first(&timer_list);
+    while (node) {
+        nlist_node_t *next = nlist_node_next(node);
+
+        net_timer_t *timer = nlist_entry(node, net_timer_t, node);
+        if (timer->curr > diff_ms) {
+            timer->curr -= diff_ms;
+            break;
+        }
+
+        //如果相减后的值大于0,说明后面还有定时器可能也到时间了,仍需遍历,
+        diff_ms -= timer->curr;
+
+        //curr <= diff_ms
+        timer->curr = 0;
+        //移除当前定时器
+        nlist_remove(&timer_list, &timer->node);
+        //将该定时器插入延时链表中
+        nlist_insert_last(&wait_list, &timer->node);
+        //在这里不执行定时器函数,因为定时器函数中可能会添加移除定时器,
+        //可能会出现问题,所以将待执行的定时器函数放到一个等待列表中
+        //继续查看后面的定时器是否也到时间了
+        
+        node = next;
+    }
+
+    while ((node = nlist_remove_first(&wait_list)) != (nlist_node_t *)0) {
+        net_timer_t *timer = nlist_entry(node, net_timer_t, node);
+
+        timer->proc(timer, timer->arg);
+
+        //如果是周期性定时器,则加回到定时器链表中
+        if (timer->flags & NET_TIMER_RELOAD) {
+            timer->curr = timer->reload;
+            insert_timer(timer);
+        }
+    }
+    
+    display_timer_list();
+
+    return NET_ERR_OK;
+}
