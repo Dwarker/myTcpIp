@@ -33,6 +33,35 @@ net_err_t net_timer_init(void) {
     return NET_ERR_OK;
 }
 
+static void insert_timer(net_timer_t *insert) {
+    nlist_node_t *node;
+
+    nlist_for_each(node, &timer_list) {
+        net_timer_t *curr = nlist_entry(node, net_timer_t, node);
+        if (insert->curr > curr->curr) {
+            insert->curr -= curr->curr;
+        } else if (insert->curr == curr->curr) {
+            insert->curr = 0;
+            nlist_insert_after(&timer_list, node, &insert->node);
+            return;
+        } else {
+            curr->curr -= insert->curr;
+
+            nlist_node_t *pre = nlist_node_pre(&curr->node);
+            if (pre) {
+                nlist_insert_after(&timer_list, pre, &insert->node);
+            } else {
+                //若是第一个节点,则直接插入前方
+                nlist_insert_fist(&timer_list, &insert->node);
+            }
+            return;
+        }
+    }
+
+    //若没有找到位置,则直接插入尾部
+    nlist_insert_last(&timer_list, &insert->node);
+}
+
 net_err_t net_timer_add(net_timer_t *timer, const char *name, timer_proc_t proc,
                         void *arg, int ms, int flags) {
     dbg_info(DBG_TIMER, "insert timer: %s", name);
@@ -45,7 +74,10 @@ net_err_t net_timer_add(net_timer_t *timer, const char *name, timer_proc_t proc,
     timer->arg = arg;
     timer->flags = flags;
 
-    nlist_insert_last(&timer_list, &timer->node);
+    //按升序插入链表,并对curr值进行调整
+    insert_timer(timer);
+
+    //nlist_insert_last(&timer_list, &timer->node);
 
     display_timer_list();
 
