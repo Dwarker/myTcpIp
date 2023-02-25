@@ -33,4 +33,7 @@ void net_timer_remove(net_timer_t *timer);
 //扫描定时器列表
 net_err_t net_timer_check_tmo(int diff_ms);
 
+//获取第一个定时器的时间
+int net_timer_first_tmo(void);
+
 #endif

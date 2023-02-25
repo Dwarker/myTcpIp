@@ -154,3 +154,12 @@ net_err_t net_timer_check_tmo(int diff_ms) {
 
     return NET_ERR_OK;
 }
+
+int net_timer_first_tmo(void) {
+    nlist_node_t *node = nlist_first(&timer_list);
+    if (node) {
+        net_timer_t *timer = nlist_entry(node, net_timer_t, node);
+        return timer->curr;
+    }
+    return 0;
+}
