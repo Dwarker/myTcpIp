@@ -8,6 +8,7 @@
 #include "ether.h"
 #include "tools.h"
 #include "timer.h"
+#include "net.h"
 
 net_err_t net_init(void) {
     dbg_info(DBG_INIT, "init net");
@@ -22,6 +23,8 @@ net_err_t net_init(void) {
     net_timer_init();
     loop_init();
     ether_init();
+
+    arp_init();//会用到定时器,所以放在定时器模块初始化之后
 
     return NET_ERR_OK;
 }

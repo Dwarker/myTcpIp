@@ -6,7 +6,7 @@
 
 typedef struct _mblock_t {
     nlist_t free_list;
-    void *start;    //只想空虚链表头部,暂时用不到
+    void *start;    //指向空虚链表头部,暂时用不到
     nlocker_t locker;//线程间争对共享资源(空虚链表)的互斥
     sys_sem_t alloc_sem;//当链表为无资源时,等待使用
 }mblock_t;
