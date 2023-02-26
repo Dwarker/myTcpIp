@@ -63,3 +63,44 @@ net_err_t arp_make_gratuitous(netif_t *netif) {
     dbg_info(DBG_ARP, "send an gratuitous arp...");
     return arp_make_request(netif, &netif->ipaddr);
 }
+
+static net_err_t is_pkt_ok(arp_pkt_t *arp_packet, uint16_t size, netif_t *netif) {
+    if (size < sizeof(arp_pkt_t)) {
+        dbg_warning(DBG_ARP, "packet size error");
+        return NET_ERR_SIZE;
+    }
+
+    if ((x_ntohs(arp_packet->htype) != ARP_HW_ETHER)
+        || arp_packet->hwlen != ETHER_HWA_SIZE
+        || (x_htons(arp_packet->ptype) != NET_PROTOCOL_IPv4)
+        || (arp_packet->plen != IPV4_ADDR_SIZE)) {
+            dbg_warning(DBG_ARP, "packet incorrect");
+            return NET_ERR_NOT_SUPPORT;
+    }
+
+    uint16_t opcode = x_htons(arp_packet->opcode);
+    if ((opcode != ARP_REPLY) && (opcode != ARP_REQUEST)) {
+        dbg_warning(DBG_ARP, "unknow opcode");
+        return NET_ERR_NOT_SUPPORT;
+    }
+
+    return NET_ERR_OK;
+}
+
+net_err_t arp_in(netif_t *netif, pktbuf_t *buf) {
+    dbg_info(DBG_ARP, "arp in");
+
+    net_err_t err = pktbuf_set_cont(buf, sizeof(arp_pkt_t));
+    if (err < 0) {
+        return err;
+    }
+
+    arp_pkt_t *arp_packet = (arp_pkt_t *)pktbuf_data(buf);
+    if (is_pkt_ok(arp_packet, buf->total_size, netif) != NET_ERR_OK) {
+        return err;
+    }
+
+    //暂时先直接释放
+    pktbuf_free(buf);
+    return NET_ERR_OK;
+}

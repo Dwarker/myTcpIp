@@ -71,6 +71,22 @@ static net_err_t ether_in (struct _netif_t *netif, pktbuf_t *buf) {
 
     display_ether_pkt("ether in", pkt, buf->total_size);
 
+    switch (x_ntohs(pkt->hdr.protocol))
+    {
+    case NET_PROTOCOL_ARP: {
+            //将接收到的arp包,移除以太网包头
+            err = pktbuf_remove_header(buf, sizeof(ether_hdr_t));
+            if (err < 0) {
+                dbg_error(DBG_ETHER, "remove header failed.");
+                return NET_ERR_SIZE;
+            }
+            //传给arp模块
+            return arp_in(netif, buf);
+        }
+    default:
+        break;
+    }
+
     pktbuf_free(buf);
     return NET_ERR_OK;
 }

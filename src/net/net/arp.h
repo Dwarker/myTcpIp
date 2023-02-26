@@ -47,4 +47,6 @@ net_err_t arp_make_request(netif_t *netif, const ipaddr_t *dest);
 //无回报ARP
 net_err_t arp_make_gratuitous(netif_t *netif);
 
+net_err_t arp_in(netif_t *netif, pktbuf_t *buf);
+
 #endif
