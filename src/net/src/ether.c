@@ -3,6 +3,7 @@
 #include "dbg.h"
 #include "tools.h"
 #include "protocol.h"
+#include "arp.h"
 
 #if DBG_DISP_ENABLED(DBG_ETHER)
 //输出以太网包相关信息
@@ -34,7 +35,9 @@ static void display_ether_pkt(char *title, ether_pkt_t *pkt, int total_size) {
 #endif
 
 static net_err_t ether_open (struct _netif_t *netif) {
-    return NET_ERR_OK;
+
+    //发送无回报arp报文,目标IP地址填入的是本地IP
+    return arp_make_gratuitous(netif);
 }
 
 static void ether_close (struct _netif_t *netif) {
@@ -79,7 +82,7 @@ static net_err_t ether_out (struct _netif_t *netif, ipaddr_t *dest, pktbuf_t *bu
     }
 
     arp_make_request(netif, dest);
-    
+
     return NET_ERR_OK;
 }
 
