@@ -45,7 +45,7 @@ net_err_t netdev_init (void) {
 	pktbuf_fill(buf, 0x53, 32);
 
 	ipaddr_t dest;
-	ipaddr_from_str(&dest, netdev0_ip);
+	ipaddr_from_str(&dest, friend0_ip);
 	netif_out(netif, &dest, buf);
 
     dbg_info(DBG_NETIF, "init done.");
