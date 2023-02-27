@@ -340,7 +340,7 @@ int main (void) {
 	#if 1
 	net_init();
 
-	basic_test();
+	//basic_test();
 	netdev_init();
 	net_start();
 

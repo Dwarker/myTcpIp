@@ -31,7 +31,7 @@ static void display_ether_pkt(char *title, ether_pkt_t *pkt, int total_size) {
     plat_printf("\n");
 }
 #else
-
+#define display_ether_pkt(title, pkt, size)
 #endif
 
 static net_err_t ether_open (struct _netif_t *netif) {

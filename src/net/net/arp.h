@@ -34,6 +34,9 @@ typedef struct _arp_entry_t {
         NET_ARP_RESOLVED,   //已经收到arp数据包,硬件地址解析完成
     }state;
 
+    int tmo;
+    int retry;
+
     nlist_node_t node;
     nlist_t buf_list;//用来存储链接未发出去的数据包(等收到arp相应包,知道硬件地址后再发送)
 

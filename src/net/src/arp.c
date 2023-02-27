@@ -9,6 +9,69 @@ static arp_entry_t cache_tbl[ARP_CACHE_SIZE];
 static mblock_t cache_mblock;//用于对cache_tbl的分配
 static nlist_t cache_list;//存放正在arp查询或者已经查询的arp
 
+#if DBG_DISP_ENABLED(DBG_ARP)
+
+static void display_arp_entry(arp_entry_t *entry) {
+    plat_printf("%d: ", (int)(entry - cache_tbl));
+    dbg_dump_ip_buf("  ip: ", entry->paddr);
+    dbg_dump_hwaddr("  mac:", entry->hwaddr, ETHER_HWA_SIZE);
+
+    plat_printf("tmo: %d, retry: %d, %s, buf: %d\n",
+                entry->tmo, entry->retry, entry->state == NET_ARP_RESOLVED ? "stable" : "pending",
+                nlist_count(&entry->buf_list));
+}
+
+//打印已经解析好的arp表数据
+static void display_arp_tbl(void) {
+    plat_printf("-------- arp table start ----------\n");
+
+    //cache_tbl这个里面的顺序是不变的,所以方便观察
+    //cache_list这个头部可能会插入新的节点
+    arp_entry_t *entry = cache_tbl;
+    for (int i = 0; i < ARP_CACHE_SIZE; i++) {
+        if (entry->state != NET_ARP_FREE) {
+            continue;
+        }
+        display_arp_entry(entry);
+    }
+
+    plat_printf("-------- arp table end ----------\n");
+}
+
+static void arp_pkt_display(arp_pkt_t *packet) {
+    uint16_t opcode = x_ntohs(packet->opcode);
+
+    plat_printf("----------- arp packet -------------\n");
+    plat_printf("   htype: %d\n", x_ntohs(packet->htype));
+    plat_printf("   ptype: %04x\n", x_ntohs(packet->ptype));
+    plat_printf("   hlen: %d\n", packet->hwlen);
+    plat_printf("   plen: %d\n", packet->plen);
+    plat_printf("   type: %d\n", opcode);
+
+    switch (opcode)
+    {
+    case ARP_REQUEST:
+        plat_printf("request\n");
+        break;
+    case ARP_REPLY:
+        plat_printf("reply\n");
+        break;
+    default:
+        plat_printf("unknow\n");
+        break;
+    }
+
+    dbg_dump_ip_buf("     sender:", packet->sender_paddr);
+    dbg_dump_hwaddr("     mac:", packet->sender_hwaddr, ETHER_HWA_SIZE);
+    dbg_dump_ip_buf("\n     target:", packet->target_paddr);
+    dbg_dump_hwaddr("     mac:", packet->sender_hwaddr, ETHER_HWA_SIZE);
+    plat_printf("\n----------arp end-----------\n");
+}
+#else
+#define arp_pkt_display(packet)
+#define display_arp_tbl()
+#endif
+
 //arp缓存表的初始化
 static net_err_t cache_init(void) {
     nlist_init(&cache_list);
@@ -49,6 +112,8 @@ net_err_t arp_make_request(netif_t *netif, const ipaddr_t *dest) {
     ipaddr_to_buf(&netif->ipaddr, arp_packet->sender_paddr);
     plat_memset(arp_packet->target_hwaddr, 0, ETHER_HWA_SIZE);
     ipaddr_to_buf(dest, arp_packet->target_paddr);
+
+    arp_pkt_display(arp_packet);
 
     //这里不能再用以太网的out接口发送数据了,因为已经在这个接口(ether_out)里面了
     net_err_t err = ether_raw_out(netif, NET_PROTOCOL_ARP, ether_broadcast_addr(), buf);
@@ -95,6 +160,8 @@ net_err_t arp_make_reply(netif_t *netif, pktbuf_t *buf) {
     plat_memcpy(arp_packet->target_paddr, arp_packet->sender_paddr, IPV4_ADDR_SIZE);
     plat_memcpy(arp_packet->sender_hwaddr, netif->hwaddr.addr, ETHER_HWA_SIZE);
     ipaddr_to_buf(&netif->ipaddr, arp_packet->sender_paddr);
+
+    arp_pkt_display(arp_packet);
 
     return ether_raw_out(netif, NET_PROTOCOL_ARP, arp_packet->target_hwaddr, buf);
 }
