@@ -82,6 +82,48 @@ static net_err_t cache_init(void) {
     return NET_ERR_OK;
 }
 
+static void cache_clear_all(arp_entry_t *entry) {
+    dbg_info(DBG_ARP, "clear packet");
+
+    nlist_node_t *first;
+    while((first = nlist_remove_first(&entry->buf_list))) {
+        pktbuf_t *buf = nlist_entry(first, pktbuf_t, node);
+        pktbuf_free(buf);
+    }
+}
+
+//arp缓存的分配:如果是强制分配,则把最久的那个节点释放掉(可能有未发送的数据,也释放)
+static arp_entry_t *cache_alloc(int force) {
+    arp_entry_t *entry = mblock_alloc(&cache_mblock, -1);
+    if (!entry && force) {
+        nlist_node_t *node = nlist_remove_last(&cache_list);
+        if (!node) {
+            dbg_warning(DBG_ARP, "alloc arp entry failed.");
+            return (arp_entry_t *)0;
+        }
+
+        entry = nlist_entry(node, arp_entry_t, node);
+        //清空未发送的数据包
+        cache_clear_all(entry);
+    }
+
+    if (entry) {
+        plat_memset(entry, 0, sizeof(arp_entry_t));
+        entry->state = NET_ARP_FREE;
+        nlist_node_init(&entry)
+        nlist_init(&entry->buf_list);//存储未发送的数据包
+    }
+
+    return entry;
+}
+
+//释放某一表项
+static void cache_free(arp_entry_t *entry) {
+    cache_clear_all(entry);
+    nlist_remove(&cache_list, &entry->node);
+    mblock_free(&cache_mblock, entry);
+}
+
 net_err_t arp_init() {
     net_err_t err = cache_init();
     if (err < 0) {
