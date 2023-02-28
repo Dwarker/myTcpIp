@@ -30,7 +30,7 @@ typedef struct _arp_entry_t {
 
     enum {
         NET_ARP_FREE,       //当前arp表项数据全部无效
-        NET_APP_WAITING,    //arp包发送后,等待响应状态
+        NET_ARP_WAITING,    //arp包发送后,等待响应状态
         NET_ARP_RESOLVED,   //已经收到arp数据包,硬件地址解析完成
     }state;
 
@@ -38,6 +38,9 @@ typedef struct _arp_entry_t {
     int retry;
 
     nlist_node_t node;
+
+    //另外这里的数据包需要进行限制,因为如果应用不停的发送数据,
+    //导致内存用尽,会影响别的应用,用宏(ARP_MAX_PKT_WAIT控制)
     nlist_t buf_list;//用来存储链接未发出去的数据包(等收到arp相应包,知道硬件地址后再发送)
 
     netif_t *netif;  //等硬件地址填入后,数据包通过这个网卡发送出去
@@ -51,5 +54,7 @@ net_err_t arp_make_request(netif_t *netif, const ipaddr_t *dest);
 net_err_t arp_make_gratuitous(netif_t *netif);
 
 net_err_t arp_in(netif_t *netif, pktbuf_t *buf);
+
+net_err_t arp_resolve(netif_t *netif, const ipaddr_t *ipaddr, pktbuf_t *buf);
 
 #endif

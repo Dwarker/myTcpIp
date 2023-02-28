@@ -8,6 +8,7 @@
 static arp_entry_t cache_tbl[ARP_CACHE_SIZE];
 static mblock_t cache_mblock;//用于对cache_tbl的分配
 static nlist_t cache_list;//存放正在arp查询或者已经查询的arp
+static const uint8_t empty_hwaddr[] = {0, 0, 0, 0, 0, 0};
 
 #if DBG_DISP_ENABLED(DBG_ARP)
 
@@ -29,7 +30,7 @@ static void display_arp_tbl(void) {
     //cache_list这个头部可能会插入新的节点
     arp_entry_t *entry = cache_tbl;
     for (int i = 0; i < ARP_CACHE_SIZE; i++, entry++) {
-        if ((entry->state != NET_APP_WAITING) &&
+        if ((entry->state != NET_ARP_WAITING) &&
             (entry->state != NET_ARP_RESOLVED)) {
             continue;
         }
@@ -168,6 +169,10 @@ static void cache_entry_set(arp_entry_t *entry, const uint8_t *hwaddr,
 }
 
 static net_err_t cache_insert(netif_t *netif, uint8_t *ip, uint8_t *hwaddr, int force) {
+    if (*(uint32_t *)ip == 0) {
+        return NET_ERR_NOT_SUPPORT;
+    }
+    
     //查找是否已存在该表项
     arp_entry_t *entry = cache_find(ip);
     if (!entry) {
@@ -213,19 +218,6 @@ net_err_t arp_init() {
 }
 
 net_err_t arp_make_request(netif_t *netif, const ipaddr_t *dest) {
-    //测试代码
-    uint8_t *ip = (uint8_t *)dest->a_addr;
-
-    ip[0] = 0x1;
-    cache_insert(netif, ip, netif->hwaddr.addr, 1);
-
-    ip[0] = 0x2;
-    cache_insert(netif, ip, netif->hwaddr.addr, 1);
-
-    ip[0] = 0x3;
-    cache_insert(netif, ip, netif->hwaddr.addr, 1);
-    cache_insert(netif, ip, netif->hwaddr.addr, 1);
-
     pktbuf_t *buf = pktbuf_alloc(sizeof(arp_pkt_t));
     if (buf == (pktbuf_t *)0) {
         dbg_error(DBG_ARP, "alloc pktbuf failed.");
@@ -312,13 +304,70 @@ net_err_t arp_in(netif_t *netif, pktbuf_t *buf) {
         return err;
     }
 
-    //对arp包做处理
-    if (x_ntohs(arp_packet->opcode) == ARP_REQUEST) {
-        dbg_info(DBG_ARP, "arp request, send reply");
-        return arp_make_reply(netif, buf);
+    arp_pkt_display(arp_packet);
+
+    //只要是发给自己的包,则创建arp缓存或者更新arp缓存,这样后面如果要发送数据包给
+    //目的主机就不需要发送arp了
+    ipaddr_t target_ip;
+    ipaddr_from_buf(&target_ip, arp_packet->target_paddr);
+    if (ipaddr_is_equal(&netif->ipaddr, &target_ip)) {
+        dbg_info(DBG_ARP, "receive an arp for me");
+
+        cache_insert(netif, arp_packet->sender_paddr, arp_packet->sender_hwaddr, 1);
+
+        //如果是arp请求包,对arp包做处理
+        if (x_ntohs(arp_packet->opcode) == ARP_REQUEST) {
+            dbg_info(DBG_ARP, "arp request, send reply");
+            return arp_make_reply(netif, buf);
+        }
+    } else {
+        //如果目标地址非本地ip的,则非强制性缓存,后面如果要发送数据,也可以不用发arp
+        //比如其他计算机刚启动时发送的宣告
+        cache_insert(netif, arp_packet->sender_paddr, arp_packet->sender_hwaddr, 0);
     }
 
-    //暂时先直接释放
     pktbuf_free(buf);
     return NET_ERR_OK;
+}
+
+net_err_t arp_resolve(netif_t *netif, const ipaddr_t *ipaddr, pktbuf_t *buf) {
+    uint8_t ip_buf[IPV4_ADDR_SIZE];
+    ipaddr_to_buf(ipaddr, ip_buf);
+
+    arp_entry_t *entry = cache_find((uint8_t *)ip_buf);
+    if (entry) {
+        dbg_info(DBG_ARP, "found an arp entry");
+
+        //已经解析好的情况
+        if (entry->state == NET_ARP_RESOLVED) {
+            return ether_raw_out(netif, NET_PROTOCOL_IPv4, entry->hwaddr, buf);
+        }
+
+        //还没有解析好的情况,并且挂载数量仍有空间
+        if (nlist_count(&entry->buf_list) <= ARP_MAX_PKT_WAIT) {
+            dbg_info(DBG_ARP, "insert buf to arp entry");
+            nlist_insert_last(&entry->buf_list, &buf->node);
+            return NET_ERR_OK;
+        } else {
+            dbg_warning(DBG_ARP, "too many waiting...");
+            return NET_ERR_FULL;
+        }
+    } else {
+        dbg_info(DBG_ARP, "make arp request");
+
+        entry = cache_alloc(1);
+        if (entry == (arp_entry_t *)0) {
+            dbg_error(DBG_ARP, "alloc arp failed.");
+            return NET_ERR_NONE;
+        }
+
+        cache_entry_set(entry, empty_hwaddr, (uint8_t *)ip_buf, netif, NET_ARP_WAITING);
+        nlist_insert_fist(&cache_list, &entry->node);
+        //挂载数据包
+        nlist_insert_last(&entry->buf_list, &buf->node);
+
+        display_arp_tbl();
+
+        return arp_make_request(netif, ipaddr);
+    }
 }

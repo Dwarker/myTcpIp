@@ -97,9 +97,8 @@ static net_err_t ether_out (struct _netif_t *netif, ipaddr_t *dest, pktbuf_t *bu
         return ether_raw_out(netif, NET_PROTOCOL_IPv4, (const uint8_t *)netif->hwaddr.addr, buf);
     }
 
-    arp_make_request(netif, dest);
-
-    return NET_ERR_OK;
+    //若是没有mac地址,则将buf挂载上去,利用arp协议去查询,查询完毕后再发送
+    return arp_resolve(netif, dest, buf);
 }
 
 net_err_t ether_init(void) {
