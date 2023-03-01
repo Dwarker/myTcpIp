@@ -34,4 +34,9 @@
 
 #define ARP_MAX_PKT_WAIT    5
 
+#define ARP_TIMER_TMO       1 //秒
+#define ARP_ENTRY_PENDING_TMO 3 //秒
+#define ARP_ENTRY_RETRY_CNT 5
+#define ARP_ENTRY_STABLE_TMO   5//秒  实际操作系统中应该是几十分钟
+
 #endif

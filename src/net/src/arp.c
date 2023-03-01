@@ -4,7 +4,11 @@
 #include "tools.h"
 #include "pktbuf.h"
 #include "protocol.h"
+#include "timer.h"
 
+#define to_scan_cnt(tmo)    (tmo / ARP_TIMER_TMO)
+
+static net_timer_t cache_timer;
 static arp_entry_t cache_tbl[ARP_CACHE_SIZE];
 static mblock_t cache_mblock;//用于对cache_tbl的分配
 static nlist_t cache_list;//存放正在arp查询或者已经查询的arp
@@ -163,9 +167,12 @@ static void cache_entry_set(arp_entry_t *entry, const uint8_t *hwaddr,
     plat_memcpy(entry->paddr, ip, IPV4_ADDR_SIZE);
     entry->state = state;
     entry->netif = netif;
-    //暂时设置为0
-    entry->tmo = 0;
-    entry->retry = 0;
+    
+    if (state == NET_ARP_RESOLVED) {
+        entry->tmo = to_scan_cnt(ARP_ENTRY_STABLE_TMO);
+    } else {
+        entry->retry = to_scan_cnt(ARP_ENTRY_PENDING_TMO);
+    }
 }
 
 static net_err_t cache_insert(netif_t *netif, uint8_t *ip, uint8_t *hwaddr, int force) {
@@ -207,6 +214,66 @@ static net_err_t cache_insert(netif_t *netif, uint8_t *ip, uint8_t *hwaddr, int 
     return NET_ERR_OK;
 }
 
+static void arp_cache_tmo(net_timer_t *timer, void *arg) {
+    int changed_cnt = 0;//表项变化时打印
+
+    nlist_node_t *curr, *next;
+    for (curr = cache_list.first; curr; curr = next) {
+        next = nlist_node_next(curr);
+
+        arp_entry_t *entry = nlist_entry(curr, arp_entry_t, node);
+        if (--entry->tmo > 0) {
+            continue;
+        }
+
+        changed_cnt++;
+
+        switch (entry->state)
+        {
+        case NET_ARP_RESOLVED:
+            //重新进行请求
+            dbg_info(DBG_ARP, "state to pending:");
+            display_arp_entry(entry);
+
+            ipaddr_t ipaddr;
+            ipaddr_from_buf(&ipaddr, entry->paddr);
+
+            entry->state = NET_ARP_WAITING;
+            entry->tmo = to_scan_cnt(ARP_ENTRY_PENDING_TMO);//等待arp回应最多等多久
+            //当已经发送arp,等待回包,但是回包可能丢包,所以需要尝试重新发送
+            entry->retry = ARP_ENTRY_RETRY_CNT;
+            arp_make_request(entry->netif, &ipaddr);
+            break;
+        case NET_ARP_WAITING:
+            if (--entry->retry == 0) {
+                //超过重试次数,则目标机器可能有问题,释放该表项
+                dbg_info(DBG_ARP, "pending tmo, free it");
+                display_arp_entry(entry);
+                cache_free(entry);
+            } else {
+                //再次发送arp
+                dbg_info(DBG_ARP, "penging tmo, send request");
+                display_arp_entry(entry);
+
+                ipaddr_t ipaddr;
+                ipaddr_from_buf(&ipaddr, entry->paddr);
+                entry->tmo = to_scan_cnt(ARP_ENTRY_PENDING_TMO);//等待arp回应最多等多久
+                arp_make_request(entry->netif, &ipaddr);
+            }
+            break;
+        default:
+            dbg_error(DBG_ARP, "unknow arp state");
+            display_arp_entry(entry);
+            break;
+        }
+    }
+
+    if (changed_cnt) {
+        dbg_info(DBG_ARP, "%d arp entry changed.", changed_cnt);
+        display_arp_tbl();
+    }
+}
+
 net_err_t arp_init() {
     net_err_t err = cache_init();
     if (err < 0) {
@@ -214,6 +281,12 @@ net_err_t arp_init() {
         return err;
     }
 
+    err = net_timer_add(&cache_timer, "arp timer", arp_cache_tmo, 
+                        (void *)0, ARP_TIMER_TMO * 1000, NET_TIMER_RELOAD);
+    if (err < 0) {
+        dbg_error(DBG_ARP, "create timer failed: %d", err);
+        return err;
+    }
     return NET_ERR_OK;
 }
 
