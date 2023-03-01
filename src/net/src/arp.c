@@ -214,6 +214,21 @@ static net_err_t cache_insert(netif_t *netif, uint8_t *ip, uint8_t *hwaddr, int 
     return NET_ERR_OK;
 }
 
+const uint8_t *arp_find(netif_t *netif, ipaddr_t *ipaddr) {
+    //判断是否是定向广播或者本地广播
+    if (ipaddr_is_local_broadcast(ipaddr) 
+        || ipaddr_is_direct_broadcast(ipaddr, &netif->netmask)) {
+        return ether_broadcast_addr();
+    }
+
+    arp_entry_t *entry = cache_find(ipaddr->a_addr);
+    if (entry && (entry->state == NET_ARP_RESOLVED)) {
+        return entry->hwaddr;
+    }
+
+    return (const uint8_t *)0;
+}
+
 static void arp_cache_tmo(net_timer_t *timer, void *arg) {
     int changed_cnt = 0;//表项变化时打印
 
@@ -401,6 +416,18 @@ net_err_t arp_in(netif_t *netif, pktbuf_t *buf) {
 
     pktbuf_free(buf);
     return NET_ERR_OK;
+}
+
+void arp_clear(netif_t *netif) {
+    nlist_node_t *node, *next;
+    for (node = nlist_first(&cache_list); node; node = next) {
+        next = nlist_node_next(node);
+
+        arp_entry_t *e = nlist_entry(node, arp_entry_t, node);
+        if (e->netif == netif) {
+            nlist_remove(&cache_list, node);
+        }
+    }
 }
 
 net_err_t arp_resolve(netif_t *netif, const ipaddr_t *ipaddr, pktbuf_t *buf) {
