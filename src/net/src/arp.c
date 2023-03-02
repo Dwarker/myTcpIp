@@ -74,6 +74,7 @@ static void arp_pkt_display(arp_pkt_t *packet) {
     plat_printf("\n----------arp end-----------\n");
 }
 #else
+#define display_arp_entry(entry)
 #define arp_pkt_display(packet)
 #define display_arp_tbl()
 #endif
