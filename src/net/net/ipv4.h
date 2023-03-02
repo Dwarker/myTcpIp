@@ -21,5 +21,6 @@ typedef struct _ipv4_hdr_t {
 #pragma pack()
 
 net_err_t ipv4_init(void);
+net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf);
 
 #endif

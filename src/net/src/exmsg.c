@@ -5,6 +5,7 @@
 #include "mblock.h"
 #include "sys.h"
 #include "timer.h"
+#include "ipv4.h"
 
 static void *msg_tbl[EXMSG_MSG_CNT];
 static fixq_t msg_queue;
@@ -59,18 +60,23 @@ static net_err_t do_netif_in(exmsg_t *msg) {
     netif_t *netif = msg->netif.netif;
 
     pktbuf_t *buf;
+    net_err_t err;
     while ((buf = netif_get_in(netif, -1))) {
         dbg_info(DBG_MSG, "recv a packet");
 
         if (netif->link_layer) {
-            net_err_t err = netif->link_layer->in(netif, buf);
+            err = netif->link_layer->in(netif, buf);
             if (err < 0) {
                 pktbuf_free(buf);
                 dbg_warning(DBG_MSG, "netif in failed, error=%d", err);
             }
         } else {
-            //比如环回接口,暂时释放
-            pktbuf_free(buf);
+            //比如环回接口数据,直接调用ipv4接口
+            err = ipv4_in(netif, buf);
+            if (err < 0) {
+                pktbuf_free(buf);
+                dbg_warning(DBG_MSG, "netif in failed, error=%d", err);
+            }
         }
     }
 

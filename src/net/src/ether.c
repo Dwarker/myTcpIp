@@ -4,6 +4,7 @@
 #include "tools.h"
 #include "protocol.h"
 #include "arp.h"
+#include "ipv4.h"
 
 #if DBG_DISP_ENABLED(DBG_ETHER)
 //输出以太网包相关信息
@@ -73,7 +74,7 @@ static net_err_t ether_in (struct _netif_t *netif, pktbuf_t *buf) {
 
     switch (x_ntohs(pkt->hdr.protocol))
     {
-    case NET_PROTOCOL_ARP: {
+        case NET_PROTOCOL_ARP: {
             //将接收到的arp包,移除以太网包头
             err = pktbuf_remove_header(buf, sizeof(ether_hdr_t));
             if (err < 0) {
@@ -83,8 +84,18 @@ static net_err_t ether_in (struct _netif_t *netif, pktbuf_t *buf) {
             //传给arp模块
             return arp_in(netif, buf);
         }
-    default:
-        break;
+        case NET_PROTOCOL_IPv4: {
+            //移除以太网头
+            err = pktbuf_remove_header(buf, sizeof(ether_hdr_t));
+            if (err < 0) {
+                dbg_error(DBG_ETHER, "remove header failed.");
+                return NET_ERR_SIZE;
+            }
+
+            return ipv4_in(netif, buf);
+        }
+        default:
+            break;
     }
 
     pktbuf_free(buf);
