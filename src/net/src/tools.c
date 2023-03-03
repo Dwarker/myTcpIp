@@ -20,7 +20,7 @@ net_err_t tools_init(void) {
 }
 
 uint16_t checksum16(void *buf, uint16_t len, uint32_t pre_sum, int complement) {
-    uin16_t *curr_buf = (uint16_t *)buf;
+    uint16_t *curr_buf = (uint16_t *)buf;
     uint32_t checksum = pre_sum;
 
     while (len > 1) {
