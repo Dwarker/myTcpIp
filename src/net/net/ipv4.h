@@ -2,6 +2,10 @@
 #define IPV4_H
 
 #include "net_err.h"
+#include <stdint.h>
+#include "netif.h"
+#include "pktbuf.h"
+#include "net_cfg.h"
 
 #define IPV4_ADDR_SIZE      4
 
@@ -9,7 +13,21 @@
 
 #pragma pack(1)
 typedef struct _ipv4_hdr_t {
-    uint16_t shdr_all;//临时使用
+    union {
+        struct {
+#if NET_ENDIAN_LITTLE
+            uint16_t shdr : 4;
+            uint16_t version : 4;
+            uint16_t tos : 8;
+#else
+            uint16_t version : 4;
+            uint16_t shdr : 4;
+            uint16_t tos : 8;
+#endif
+        };
+        uint16_t shdr_all;
+    };
+    
     uint16_t total_len;
     uint16_t id;
     uint16_t frag_all; //临时使用
