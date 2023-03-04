@@ -2,6 +2,7 @@
 #include "dbg.h"
 #include "pktbuf.h"
 #include "tools.h"
+#include "protocol.h"
 
 net_err_t ipv4_init(void) {
     dbg_info(DBG_IP, "init ip\n");
@@ -23,9 +24,9 @@ static net_err_t is_pkt_pk(ipv4_pkt_t *pkt, int size, netif_t *netif) {
         return NET_ERR_SIZE;
     }
 
-    //对整个数据包的长度做检查
+    //对整个数据包的长度做检查(需要再看)
     int total_size = x_ntohs(pkt->hdr.total_len);
-    if ((total_size > sizeof(ipv4_hdr_t)) || (size < total_size)) {
+    if ((total_size < sizeof(ipv4_hdr_t)) || (size < total_size)) {
         dbg_warning(DBG_IP, "ipv4 size error");
         return NET_ERR_SIZE;
     }
@@ -45,6 +46,25 @@ static void iphdr_ntohs(ipv4_pkt_t *pkt) {
     pkt->hdr.total_len = x_ntohs(pkt->hdr.total_len);
     pkt->hdr.id = x_ntohs(pkt->hdr.id);
     pkt->hdr.frag_all = x_ntohs(pkt->hdr.frag_all);
+}
+
+static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src, ipaddr_t *dest_ip) {
+    ipv4_pkt_t *pkt = (ipv4_pkt_t *)pktbuf_data(buf);
+
+    switch (pkt->hdr.protocol)
+    {
+    case NET_PROTOCOL_ICMPv4:
+        break;
+    case NET_PROTOCOL_UDP:
+        break;
+    case NET_PROTOCOL_TCP:
+        break;
+    default:
+        dbg_warning(DBG_IP, "unknow protocol");
+        break;
+    }
+
+    return NET_ERR_OK;
 }
 
 net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
@@ -70,6 +90,20 @@ net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
         dbg_error(DBG_IP, "ip pkt resize failed.");
         return err;
     }
+
+    //判断是否发给自己
+    ipaddr_t dest_ip, src_ip;
+    ipaddr_from_buf(&dest_ip, pkt->hdr.dest_ip);
+    ipaddr_from_buf(&src_ip, pkt->hdr.src_ip);
+
+    if (!ipaddr_is_match(&dest_ip, &netif->ipaddr, &netif->netmask)) {
+        //上层释放
+        dbg_error(DBG_IP, "ipaddr not match");
+        return NET_ERR_UNREACH;
+    }
+
+    //不分片的情况
+    err = ip_normal_in(netif, buf, &src_ip, &dest_ip);
 
     pktbuf_free(buf);
     return NET_ERR_OK;
