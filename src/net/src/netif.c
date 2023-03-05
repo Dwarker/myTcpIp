@@ -264,6 +264,10 @@ void netif_set_default(netif_t *netif) {
     netif_default = netif;
 }
 
+netif_t* netif_get_default(void) {
+    return netif_default;
+}
+
 net_err_t netif_put_in(netif_t *netif, pktbuf_t *buf, int tmo) {
     net_err_t err = fixq_send(&netif->in_q, buf, tmo);
     if (err < 0) {
