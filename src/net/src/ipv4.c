@@ -162,7 +162,8 @@ net_err_t ipv4_out(uint8_t protocol, ipaddr_t *dest, ipaddr_t *src, pktbuf_t *bu
     ipaddr_to_buf(dest, pkt->hdr.dest_ip);
 
     iphdr_htons(pkt);
-    pkt->hdr.hdr_checksum = 0;//后面计算校验和
+    pktbuf_reset_acc(buf);//重置所有游标
+    pkt->hdr.hdr_checksum = pktbuf_checksum16(buf, ipv4_hdr_size(pkt), 0, 1);
 
     display_ip_pkt(pkt);
     

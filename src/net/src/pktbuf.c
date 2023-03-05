@@ -3,6 +3,7 @@
 #include "mblock.h"
 #include "nlocker.h"
 #include "sys.h"
+#include "tools.h"
 
 #if 0
 typedef struct _pktblk_t {
@@ -637,4 +638,27 @@ net_err_t pktbuf_fill (pktbuf_t *buf, uint8_t value, int size) {
     }
 
     return NET_ERR_OK;
+}
+
+//tcp udp校验和计算
+uint16_t pktbuf_checksum16(pktbuf_t *buf, int size, uint32_t pre_sum, int complement) {
+    dbg_assert(buf->ref != 0, "buf ref == 0");
+
+    //这里实际计算的时候,pos大多数为0,所以就是整段数据的大小
+    int remain_size = total_blk_remain(buf);
+    if (remain_size < size) {
+        dbg_warning(DBG_BUF, "size too big");
+        return 0;
+    }
+
+    uint32_t sum = pre_sum;
+    while (size > 0) {
+        int blk_size = curr_blk_remain(buf);
+        int curr_size = (blk_size > size) ? size : blk_size;
+        sum = checksum16(buf->blk_offset, curr_size, sum, 0);
+        move_forward(buf, curr_size);
+        size -= curr_size;
+    }
+
+    return complement ? (uint16_t)~sum : (uint16_t)sum;
 }
