@@ -28,7 +28,7 @@ static net_err_t icmpv4_out(ipaddr_t *dest, ipaddr_t *src, pktbuf_t *buf) {
     pktbuf_reset_acc(buf);
     pkt->hdr.checksum = pktbuf_checksum16(buf, buf->total_size, 0, 1);
 
-    //display_icmp_packet();
+    display_icmp_packet("icmp out", pkt);
     return ipv4_out(NET_PROTOCOL_ICMPv4, dest, src, buf);
 }
 
@@ -87,7 +87,7 @@ net_err_t icmpv4_in(ipaddr_t *src_ip, ipaddr_t *netif_in, pktbuf_t *buf) {
         return err;
     }
 
-    //display_icmp_packet();
+    display_icmp_packet("icmp in", icmp_pkt);
 
     switch (icmp_pkt->hdr.type)
     {
