@@ -35,7 +35,7 @@ net_err_t ipv4_init(void) {
 }
 
 //检查包的合法性
-static net_err_t is_pkt_pk(ipv4_pkt_t *pkt, int size, netif_t *netif) {
+static net_err_t is_pkt_ok(ipv4_pkt_t *pkt, int size, netif_t *netif) {
     if (pkt->hdr.version != NET_VERSION_IPV4) {
         dbg_warning(DBG_IP, "invalid ip version");
         return NET_ERR_NOT_SUPPORT;
@@ -115,7 +115,7 @@ net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
     }
 
     ipv4_pkt_t *pkt = (ipv4_pkt_t *)pktbuf_data(buf);
-    if (is_pkt_pk(pkt, buf->total_size, netif) != NET_ERR_OK) {
+    if (is_pkt_ok(pkt, buf->total_size, netif) != NET_ERR_OK) {
         dbg_warning(DBG_IP, "packet is broken.");
         return err;
     }
@@ -143,7 +143,7 @@ net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
     //不分片的情况
     err = ip_normal_in(netif, buf, &src_ip, &dest_ip);
 
-    pktbuf_free(buf);
+    //pktbuf_free(buf);
     return NET_ERR_OK;
 }
 

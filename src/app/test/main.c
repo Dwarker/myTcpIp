@@ -21,7 +21,6 @@
 #include "tools.h"
 #include "timer.h"
 #include "ipv4.h"
-
 pcap_data_t netdev0_data = {.ip = netdev0_phy_ip, .hwaddr = netdev0_hwaddr};
 
 net_err_t netdev_init (void) {
@@ -42,12 +41,12 @@ net_err_t netdev_init (void) {
 
     netif_set_active(netif);
 
-	pktbuf_t *buf = pktbuf_alloc(32);
-	pktbuf_fill(buf, 0x53, 32);
+	//pktbuf_t *buf = pktbuf_alloc(32);
+	//pktbuf_fill(buf, 0x53, 32);
 
-	ipaddr_t dest, src;
-	ipaddr_from_str(&dest, friend0_ip);
-	ipaddr_from_str(&src, netdev0_ip);
+	//ipaddr_t dest, src;
+	//ipaddr_from_str(&dest, friend0_ip);
+	//ipaddr_from_str(&src, netdev0_ip);
 	//netif_out(netif, &dest, buf);
 	//ipv4_out(0, &dest, &src, buf);
 
@@ -332,9 +331,9 @@ void thread4_entry (void *arg) {
 }
 #endif
 int main (void) {
-	dbg_info(DBG_TEST, "info");
-	dbg_warning(DBG_TEST, "warning");
-	dbg_error(DBG_TEST, "error");
+	//dbg_info(DBG_TEST, "info");
+	//dbg_warning(DBG_TEST, "warning");
+	//dbg_error(DBG_TEST, "error");
 
 	#if 0
 	sem1 = sys_sem_create(0);

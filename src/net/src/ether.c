@@ -95,7 +95,8 @@ static net_err_t ether_in (struct _netif_t *netif, pktbuf_t *buf) {
             return ipv4_in(netif, buf);
         }
         default:
-            break;
+            dbg_warning(DBG_ETHER, "unknown packet");
+        	return NET_ERR_NOT_SUPPORT;
     }
 
     pktbuf_free(buf);

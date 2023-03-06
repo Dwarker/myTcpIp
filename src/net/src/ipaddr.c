@@ -10,12 +10,18 @@ net_err_t ipaddr_from_str (ipaddr_t *dest, const char *str) {
         return NET_ERR_PARAM;
     }
 
-    uint8_t *p = dest->a_addr;
+    dest->type = IPADDR_V4;
+    dest->q_addr = 0;
+
+    // 192.168.74.1
+    // "192" -> 192 -> dest->a_addr[0]
+    uint8_t * p = dest->a_addr;
     uint8_t sub_addr = 0;
     char c;
     while ((c = *str++) != '\0') {
-        if ((c >= '0') && (c <= '9')) {
-            sub_addr = sub_addr * 10 + (c - '0');
+        // '1' -> '9'
+        if ((c >= '0') && (c <='9')) {  // 012345..9
+            sub_addr = sub_addr * 10 + (c - '0');        // 10 + 9 => 190 + 2 = 192
         } else if (c == '.') {
             *p++ = sub_addr;
             sub_addr = 0;
@@ -24,7 +30,7 @@ net_err_t ipaddr_from_str (ipaddr_t *dest, const char *str) {
         }
     }
 
-    *p++ = sub_addr;
+    *p = sub_addr;
     return NET_ERR_OK;
 }
 
@@ -80,7 +86,7 @@ int ipaddr_is_direct_broadcast(const ipaddr_t *ipaddr, const ipaddr_t *netmask) 
 //本地ip, 74.255(定向广播) 255.255.255.255(本地广播)
 int ipaddr_is_match(const ipaddr_t *dest, const ipaddr_t *src, const ipaddr_t *netmask) {
     ipaddr_t dest_netid = ipaddr_get_net(dest, netmask);
-    ipaddr_t src_netid = ipaddr_get_net(src, netmask);
+    ipaddr_t src_netid = ipaddr_get_net(src, netmask);//src
 
     if (ipaddr_is_local_broadcast(dest)) {
         return 1;

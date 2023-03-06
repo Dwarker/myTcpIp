@@ -120,5 +120,5 @@ net_err_t exmsg_start(void) {
         return NET_ERR_SYS;
     }
 
-    return NET_ERR_SYS;
+    return NET_ERR_OK;
 }

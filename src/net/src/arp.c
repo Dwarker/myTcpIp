@@ -70,7 +70,7 @@ static void arp_pkt_display(arp_pkt_t *packet) {
     dbg_dump_ip_buf("     sender:", packet->sender_paddr);
     dbg_dump_hwaddr("     mac:", packet->sender_hwaddr, ETHER_HWA_SIZE);
     dbg_dump_ip_buf("\n     target:", packet->target_paddr);
-    dbg_dump_hwaddr("     mac:", packet->sender_hwaddr, ETHER_HWA_SIZE);
+    dbg_dump_hwaddr("     mac:", packet->target_hwaddr, ETHER_HWA_SIZE);
     plat_printf("\n----------arp end-----------\n");
 }
 #else
@@ -310,7 +310,7 @@ net_err_t arp_make_request(netif_t *netif, const ipaddr_t *dest) {
     pktbuf_t *buf = pktbuf_alloc(sizeof(arp_pkt_t));
     if (buf == (pktbuf_t *)0) {
         dbg_error(DBG_ARP, "alloc pktbuf failed.");
-        return NET_ERR_OK;
+        return NET_ERR_NONE;
     }
 
     pktbuf_set_cont(buf, sizeof(arp_pkt_t));
@@ -350,14 +350,14 @@ static net_err_t is_pkt_ok(arp_pkt_t *arp_packet, uint16_t size, netif_t *netif)
     }
 
     if ((x_ntohs(arp_packet->htype) != ARP_HW_ETHER)
-        || arp_packet->hwlen != ETHER_HWA_SIZE
+        || (arp_packet->hwlen != ETHER_HWA_SIZE)
         || (x_htons(arp_packet->ptype) != NET_PROTOCOL_IPv4)
         || (arp_packet->plen != IPV4_ADDR_SIZE)) {
             dbg_warning(DBG_ARP, "packet incorrect");
             return NET_ERR_NOT_SUPPORT;
     }
 
-    uint16_t opcode = x_htons(arp_packet->opcode);
+    uint16_t opcode = x_ntohs(arp_packet->opcode);
     if ((opcode != ARP_REPLY) && (opcode != ARP_REQUEST)) {
         dbg_warning(DBG_ARP, "unknow opcode");
         return NET_ERR_NOT_SUPPORT;

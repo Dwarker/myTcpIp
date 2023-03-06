@@ -4,6 +4,15 @@
 #include "netif.h"
 #include "pktbuf.h"
 
+typedef enum _icmp_type_t {
+    ICMPv4_ECHO_REQUEST = 8,
+    ICMPv4_ECHO_REPLY = 0,
+}icmp_type_t;
+
+typedef enum _icmp_code_t {
+    ICMPv4_ECHO = 0,
+}icmp_code_t;
+
 #pragma pack(1)
 typedef struct _icmpv4_hdr_t {
     uint8_t type;

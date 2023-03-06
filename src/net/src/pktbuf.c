@@ -266,7 +266,7 @@ net_err_t pktbuf_add_header(pktbuf_t *buf, int size, int cont) {
 
     if (cont) {
         if (size > PKTBUF_BLK_SIZE) {
-            dbg_error(DBG_BUF, "set cont, size too big: %d > %d\n", size, PKTBUF_BLK_SIZE);
+            dbg_error(DBG_BUF, "set cont, size too big: %d > %d", size, PKTBUF_BLK_SIZE);
             return NET_ERR_SIZE;
         }
 
@@ -479,7 +479,7 @@ void pktbuf_reset_acc(pktbuf_t *buf) {
 }
 
 static void move_forward (pktbuf_t *buf, int size) {
-    dbg_assert(buf->ref != 0, "buf ref == 0");
+    //dbg_assert(buf->ref != 0, "buf ref == 0");
 
     buf->pos += size;
     buf->blk_offset += size;
