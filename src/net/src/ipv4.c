@@ -94,6 +94,9 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
             break;
         }
     case NET_PROTOCOL_UDP:
+        //不管发过来的是什么udp数据,暂时都回端口不可达
+        iphdr_htons(pkt);
+        icmpv4_out_unreach(src_ip, &netif->ipaddr, ICMPv4_UNREACH_PORT, buf);
         break;
     case NET_PROTOCOL_TCP:
         break;
@@ -102,7 +105,7 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
         break;
     }
 
-    return NET_ERR_OK;
+    return NET_ERR_UNREACH;
 }
 
 net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
