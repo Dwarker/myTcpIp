@@ -40,6 +40,37 @@ net_err_t frag_init(void) {
     return NET_ERR_OK;
 }
 
+static void frag_free_buf_list(ip_frag_t *frag) {
+    nlist_node_t *node;
+    while ((node = nlist_remove_first(&frag->buf_list))) {
+        pktbuf_t *buf = nlist_entry(node, pktbuf_t, node);
+        pktbuf_free(buf);
+    }
+}
+
+static ip_frag_t *frag_alloc(void) {
+    ip_frag_t *frag = mblock_alloc(&frag_mblock, -1);
+    if (!frag) {
+        //将放的最久的分片头移除
+        nlist_node_t *node = nlist_remove_last(&frag_list);
+        frag = nlist_entry(node, ip_frag_t, node);
+        if (frag) {
+            //移除分片
+            frag_free_buf_list(frag);
+        }
+    }
+
+    //返回分片头
+    return frag;
+}
+
+//释放分片头和分片
+static void frag_free(ip_frag_t *frag) {
+    frag_free_buf_list(frag);
+    nlist_remove(&frag_list, &frag->node);
+    mblock_free(&frag_mblock, frag);
+}
+
 net_err_t ipv4_init(void) {
     dbg_info(DBG_IP, "init ip\n");
 
@@ -93,6 +124,11 @@ static void iphdr_htons(ipv4_pkt_t *pkt) {
     pkt->hdr.total_len = x_htons(pkt->hdr.total_len);
     pkt->hdr.id = x_htons(pkt->hdr.id);
     pkt->hdr.frag_all = x_htons(pkt->hdr.frag_all);
+}
+
+static net_err_t ip_frag_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
+
+    return NET_ERR_OK;
 }
 
 static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
@@ -161,8 +197,13 @@ net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
         return NET_ERR_UNREACH;
     }
 
-    //不分片的情况
-    err = ip_normal_in(netif, buf, &src_ip, &dest_ip);
+    //处理存在分片的情况
+    if (pkt->hdr.frag_offset || pkt->hdr.more) {
+        err = ip_frag_in(netif, buf, &src_ip, &dest_ip);
+    } else {
+        //不分片的情况
+        err = ip_normal_in(netif, buf, &src_ip, &dest_ip);
+    }
 
     //pktbuf_free(buf);
     return NET_ERR_OK;
