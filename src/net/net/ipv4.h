@@ -30,7 +30,23 @@ typedef struct _ipv4_hdr_t {
     
     uint16_t total_len;
     uint16_t id;
-    uint16_t frag_all; //临时使用
+    union {
+        struct {
+#if NET_ENDIAN_LITTLE
+            uint16_t frag_offset : 13;
+            uint16_t more : 1;//是否有更多分片
+            uint16_t disable : 1;//是否使能分片
+            uint16_t reversed : 1;//保留
+#else
+            uint16_t reversed : 1;//保留
+            uint16_t disable : 1;//是否使能分片
+            uint16_t more : 1;//是否有更多分片
+            uint16_t frag_offset : 13;
+#endif
+        };
+        uint16_t frag_all;
+    };
+    
     uint8_t ttl;
     uint8_t protocol;
     uint16_t hdr_checksum;
@@ -43,6 +59,14 @@ typedef struct _ipv4_pkt_t {
     uint8_t data[1]; //不考虑协议头的选项部分
 }ipv4_pkt_t;
 #pragma pack()
+
+typedef struct _ip_frag_t {
+    ipaddr_t ip;//分片属于哪个IP(即哪个网卡)
+    uint16_t id;//分片属于哪个数据包
+    int tmo;
+    nlist_t buf_list;
+    nlist_node_t node;
+}ip_frag_t;
 
 net_err_t ipv4_init(void);
 net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf);

@@ -41,4 +41,6 @@
 #define ARP_ENTRY_RETRY_CNT 5
 #define ARP_ENTRY_STABLE_TMO   5//秒  实际操作系统中应该是几十分钟
 
+#define IP_FLAGS_MAX_NR     5
+
 #endif
