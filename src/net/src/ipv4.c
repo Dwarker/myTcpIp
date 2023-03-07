@@ -9,7 +9,7 @@
 static uint16_t packet_id = 0;
 
 static uint16_t frag_array[IP_FLAGS_MAX_NR];
-static mblock_t frag_mblock;
+static mblock_t frag_mblock;//存放空的分片链表
 static nlist_t frag_list;//组织分片列表
 
 #if DBG_DISP_ENABLED(DBG_IP)
@@ -71,6 +71,34 @@ static void frag_free(ip_frag_t *frag) {
     mblock_free(&frag_mblock, frag);
 }
 
+static void frag_add(ip_frag_t *frag, ipaddr_t *ip, uint16_t id) {
+    ipaddr_copy(&frag->ip, ip);
+    frag->tmo = 0;
+    frag->id = id;
+    nlist_node_init(&frag->node);
+    nlist_init(&frag->buf_list);
+
+    //将该分片头放入链表管理器中
+    nlist_insert_fist(&frag_list, &frag->node);
+}
+
+//查找分片头
+static ip_frag_t *frag_find(ipaddr_t *ip, uint16_t id) {
+    nlist_node_t *curr;
+
+    nlist_for_each(curr, &frag_list) {
+        ip_frag_t *frag = nlist_entry(curr, ip_frag_t, node);
+        if (ipaddr_is_equal(ip, &frag->ip) && (id == frag->id)) {
+            //将该分片头调整至链表头:因为后面的数据包很可能也需要链接入这个链表头,
+            //这样减少查询时间
+            nlist_remove(&frag_list, curr);
+            nlist_insert_fist(&frag_list, curr);
+            return frag;
+        }
+    }
+    return (ip_frag_t *)0;
+}
+
 net_err_t ipv4_init(void) {
     dbg_info(DBG_IP, "init ip\n");
 
@@ -127,7 +155,14 @@ static void iphdr_htons(ipv4_pkt_t *pkt) {
 }
 
 static net_err_t ip_frag_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
+    ipv4_pkt_t *curr = (ipv4_pkt_t *)pktbuf_data(buf);
 
+    //同一个数据包,hdr.id不变
+    ip_frag_t *frag = frag_find(src_ip, curr->hdr.id);
+    if (!frag) {
+        frag = frag_alloc();
+        frag_add(frag, src_ip, curr->hdr.id);
+    }
     return NET_ERR_OK;
 }
 
