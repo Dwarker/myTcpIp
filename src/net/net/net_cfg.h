@@ -43,4 +43,6 @@
 
 #define IP_FLAGS_MAX_NR     5
 
+#define IP_FRAG_MAX_BUF_NR  10  //每个包的分片数量限制
+
 #endif
