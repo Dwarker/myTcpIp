@@ -19,9 +19,18 @@ net_err_t tools_init(void) {
     return NET_ERR_OK;
 }
 
-uint16_t checksum16(void *buf, uint16_t len, uint32_t pre_sum, int complement) {
+uint16_t checksum16(int offset, void *buf, uint16_t len, uint32_t pre_sum, int complement) {
     uint16_t *curr_buf = (uint16_t *)buf;
     uint32_t checksum = pre_sum;
+
+    //当前位置是否为奇数位
+    if (offset & 0x1) {
+        //提取出当前数据的高八位
+        uint8_t *buf = (uint8_t *)curr_buf;
+        checksum += *buf++ << 8;
+        curr_buf = (uint16_t *)buf;
+        len--;
+    }
 
     while (len > 1) {
         checksum += *curr_buf++;

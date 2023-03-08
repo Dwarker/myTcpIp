@@ -288,7 +288,7 @@ static net_err_t is_pkt_ok(ipv4_pkt_t *pkt, int size, netif_t *netif) {
     }
 
     if (pkt->hdr.hdr_checksum) {
-        uint16_t c = checksum16(pkt, hdr_len, 0, 1);
+        uint16_t c = checksum16(0, pkt, hdr_len, 0, 1);
         if (c != 0) {
             dbg_warning(DBG_IP, "bad checksum");
             return NET_ERR_BROKEN;
