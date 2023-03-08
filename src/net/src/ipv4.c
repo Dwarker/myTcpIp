@@ -405,8 +405,85 @@ net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf) {
     return NET_ERR_OK;
 }
 
+net_err_t ip_frag_out(uint8_t protocol, ipaddr_t *dest, ipaddr_t *src, pktbuf_t *buf, netif_t *netif) {
+    dbg_info(DBG_IP, "frag send an ip pkt");
+
+    pktbuf_reset_acc(buf);
+
+    int offset = 0;
+    int total = buf->total_size;
+    while (total) {
+        int curr_size = total;
+        if (curr_size + sizeof(ipv4_hdr_t) > netif->mtu) {
+            curr_size = netif->mtu - sizeof(ipv4_hdr_t);
+        }
+
+        pktbuf_t *dest_buf = pktbuf_alloc(curr_size + sizeof(ipv4_hdr_t));
+        if (!dest_buf) {
+            dbg_error(DBG_IP, "alloc buffer for frag send failed.");
+            return NET_ERR_NONE;
+        }
+        ipv4_pkt_t *pkt = (ipv4_pkt_t *)pktbuf_data(dest_buf);
+        pkt->hdr.shdr_all = 0;//暂时设置为0
+        pkt->hdr.version = NET_VERSION_IPV4;
+        ipv4_set_hdr_size(pkt, sizeof(ipv4_hdr_t));
+        pkt->hdr.total_len = dest_buf->total_size;
+        pkt->hdr.id = packet_id;
+        pkt->hdr.frag_all = 0;
+        pkt->hdr.ttl = NET_IP_DEFAULT_TTL;
+        pkt->hdr.protocol = protocol;
+        pkt->hdr.hdr_checksum = 0;
+        ipaddr_to_buf(src, pkt->hdr.src_ip);
+        ipaddr_to_buf(dest, pkt->hdr.dest_ip);
+
+        pkt->hdr.frag_offset = offset >> 3;//以八个字节为单位
+        pkt->hdr.more = total > curr_size;
+
+        //拷贝数据
+        pktbuf_seek(dest_buf, sizeof(ipv4_hdr_t));
+        net_err_t err = pktbuf_copy(dest_buf, buf, curr_size);
+        if (err < 0) {
+            dbg_error(DBG_IP, "frag copy failed.");
+            pktbuf_free(dest_buf);
+            return err;
+        }
+
+        iphdr_htons(pkt);
+        pktbuf_reset_acc(dest_buf);//重置所有游标
+        pkt->hdr.hdr_checksum = pktbuf_checksum16(dest_buf, ipv4_hdr_size(pkt), 0, 1);
+
+        display_ip_pkt(pkt);
+        err = netif_out(netif, dest, dest_buf);
+        if (err < 0) {
+            dbg_warning(DBG_IP, "send ip packet");
+            pktbuf_free(dest_buf);
+            return err;
+        }
+
+        total -= curr_size;
+        offset += curr_size;
+    }
+
+    packet_id++;
+    pktbuf_free(buf);
+    return NET_ERR_OK;
+}
+
 net_err_t ipv4_out(uint8_t protocol, ipaddr_t *dest, ipaddr_t *src, pktbuf_t *buf) {
     dbg_info(DBG_IP, "send an ip pkt");
+
+    //分片
+    netif_t *netif = netif_get_default();
+    //判断是否存在mtu限制,注意:此时因为还没添加ip包头,所以total_size大小不好含ip包头大小
+    if (netif->mtu && ((buf->total_size + sizeof(ipv4_hdr_t)) > netif->mtu)) {
+        net_err_t err = ip_frag_out(protocol, dest, src, buf, netif);
+        if (err < 0) {
+            dbg_warning(DBG_IP, "send ip frag failed.");
+            return err;
+        }
+
+        return NET_ERR_OK;
+    }
 
     net_err_t err = pktbuf_add_header(buf, sizeof(ipv4_hdr_t), 1);
     if (err < 0) {
