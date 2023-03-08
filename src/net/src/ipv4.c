@@ -5,12 +5,14 @@
 #include "protocol.h"
 #include "icmpv4.h"
 #include "mblock.h"
+#include "timer.h"
 
 static uint16_t packet_id = 0;
 
 static ip_frag_t frag_array[IP_FLAGS_MAX_NR];
 static mblock_t frag_mblock;//存放空的分片链表
 static nlist_t frag_list;//组织分片列表
+static net_timer_t frag_timer;
 
 static int get_data_size(ipv4_pkt_t *pkt) {
     return pkt->hdr.total_len - ipv4_hdr_size(pkt);//数据大小
@@ -74,12 +76,6 @@ static void display_ip_pkt(ipv4_pkt_t *pkt) {
 #define display_ip_frags()
 #endif
 
-net_err_t frag_init(void) {
-    nlist_init(&frag_list);
-    mblock_init(&frag_mblock, frag_array, sizeof(ip_frag_t), IP_FLAGS_MAX_NR, NLOCKER_NONE);
-    return NET_ERR_OK;
-}
-
 static void frag_free_buf_list(ip_frag_t *frag) {
     nlist_node_t *node;
     while ((node = nlist_remove_first(&frag->buf_list))) {
@@ -113,7 +109,7 @@ static void frag_free(ip_frag_t *frag) {
 
 static void frag_add(ip_frag_t *frag, ipaddr_t *ip, uint16_t id) {
     ipaddr_copy(&frag->ip, ip);
-    frag->tmo = 0;
+    frag->tmo = IP_FRAG_TMO / IP_FRAG_SCAN_PERIOD;//总扫描次数
     frag->id = id;
     nlist_node_init(&frag->node);
     nlist_init(&frag->buf_list);
@@ -232,6 +228,33 @@ free_and_return:
     return (pktbuf_t *)0;
 }
 
+static void frag_tmo(net_timer_t *timer, void *arg) {
+    nlist_node_t *curr, *next;
+
+    for (curr = nlist_first(&frag_list); curr; curr = next) {
+        next = nlist_node_next(curr);
+
+        ip_frag_t *frag = nlist_entry(curr, ip_frag_t, node);
+        if (--frag->tmo <= 0) {
+            frag_free(frag);
+        }
+    }
+}
+
+net_err_t frag_init(void) {
+    nlist_init(&frag_list);
+    mblock_init(&frag_mblock, frag_array, sizeof(ip_frag_t), IP_FLAGS_MAX_NR, NLOCKER_NONE);
+    
+    net_err_t err = net_timer_add(&frag_timer, "frag timer", frag_tmo, (void *)0,
+                    IP_FRAG_SCAN_PERIOD * 1000, NET_TIMER_RELOAD);
+    if (err < 0) {
+        dbg_error(DBG_IP, "create frag timer failed.");
+        return err;
+    }
+    
+    return NET_ERR_OK;
+}
+
 net_err_t ipv4_init(void) {
     dbg_info(DBG_IP, "init ip\n");
 
@@ -320,7 +343,7 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
 
 static net_err_t ip_frag_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
     ipv4_pkt_t *curr = (ipv4_pkt_t *)pktbuf_data(buf);
-
+    
     //同一个数据包,hdr.id不变
     ip_frag_t *frag = frag_find(src_ip, curr->hdr.id);
     if (!frag) {
@@ -447,6 +470,10 @@ net_err_t ip_frag_out(uint8_t protocol, ipaddr_t *dest, ipaddr_t *src, pktbuf_t 
             pktbuf_free(dest_buf);
             return err;
         }
+
+        //将被拷贝的部分释放掉
+        pktbuf_remove_header(buf, curr_size);
+        pktbuf_reset_acc(buf);
 
         iphdr_htons(pkt);
         pktbuf_reset_acc(dest_buf);//重置所有游标
