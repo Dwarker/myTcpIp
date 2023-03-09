@@ -333,6 +333,9 @@ void thread4_entry (void *arg) {
 	}
 }
 #endif
+
+net_err_t test_func(struct _func_msg_t *msg);
+
 int main (void) {
 	//dbg_info(DBG_TEST, "info");
 	//dbg_warning(DBG_TEST, "warning");
@@ -356,8 +359,13 @@ int main (void) {
 
 	#endif
 
+	//请求协议栈执行某函数,这里是请求执行test_func
+	int arg = 0x1234;
+	exmsg_func_exec(test_func, &arg);
+
 	ping_t p;
 	//ping_run(&p, friend0_ip, 4, 64, 1000);
+	
 	char cmd[32], param[32];
 	while (1) {
 		printf(">>");
