@@ -21,6 +21,9 @@
 #include "tools.h"
 #include "timer.h"
 #include "ipv4.h"
+
+#include "ping/ping.h"
+
 pcap_data_t netdev0_data = {.ip = netdev0_phy_ip, .hwaddr = netdev0_hwaddr};
 
 net_err_t netdev_init (void) {
@@ -352,6 +355,9 @@ int main (void) {
 	net_start();
 
 	#endif
+
+	ping_t p;
+	ping_run(&p, netdev0_phy_ip, 4, 64, 1000);
 
 	while (1) {
 		sys_sleep(10);
