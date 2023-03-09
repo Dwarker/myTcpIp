@@ -1,6 +1,7 @@
 #include "ping.h"
 #include "sys_plat.h"
 #include <WinSock2.h>
+#include "net_api.h"
 
 uint16_t checksum(void *buf, uint16_t len) {
     uint16_t *curr_buf = (uint16_t *)buf;
