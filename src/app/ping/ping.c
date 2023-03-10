@@ -61,11 +61,11 @@ void ping_run(ping_t *ping, const char *dest, int count, int size, int interval)
         ping->req.echo_hdr.seq = seq;
         ping->req.echo_hdr.checksum = checksum(&ping->req, total_size);
 
-        #if 0
+        #if 1
         int size = sendto(s, (const char *)&ping->req, total_size, 0,
                 (const struct sockaddr *)&addr, sizeof(addr));
         #endif
-        int size = send(s, (const char *)&ping->req, total_size, 0);
+        //int size = send(s, (const char *)&ping->req, total_size, 0);
         if (size < 0) {
             printf("send ping request failed.\n");
             break;

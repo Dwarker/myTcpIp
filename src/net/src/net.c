@@ -12,6 +12,7 @@
 #include "ipv4.h"
 #include "icmpv4.h"
 #include "sock.h"
+#include "raw.h"
 
 net_err_t net_init(void) {
     dbg_info(DBG_INIT, "init net");
@@ -32,6 +33,7 @@ net_err_t net_init(void) {
     icmpv4_init();
 
     socket_init();
+    raw_init();
 
     return NET_ERR_OK;
 }

@@ -3,7 +3,7 @@
 #include "exmsg.h"
 #include "dbg.h"
 
-#define SOCKET_MAX_NR   10
+#define SOCKET_MAX_NR   (RAW_MAX_NR)
 
 static x_socket_t socket_tbl[SOCKET_MAX_NR];
 
@@ -40,6 +40,22 @@ static void socket_free(x_socket_t *s) {
 
 net_err_t socket_init(void) {
     plat_memset(socket_tbl, 0, sizeof(socket_tbl));
+    return NET_ERR_OK;
+}
+
+net_err_t sock_init(sock_t *sock, int family, int protocol, const sock_ops_t *ops) {
+    sock->protocol = protocol;
+    sock->family = family;
+    sock->ops = ops;
+
+    ipaddr_set_any(&sock->local_ip);
+    ipaddr_set_any(&sock->remote_ip);
+    sock->local_port = 0;
+    sock->remote_port = 0;
+    sock->err = NET_ERR_OK;
+    sock->rcv_tmo = 0;
+    sock->snd_tmo = 0;
+    nlist_node_init(&sock->node);
     return NET_ERR_OK;
 }
 
