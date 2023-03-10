@@ -30,14 +30,14 @@ void ping_run(ping_t *ping, const char *dest, int count, int size, int interval)
     WSADATA wsdata;
     WSAStartup(MAKEWORD(2, 2), &wsdata);
 
-    SOCKET s = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    int s = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (s < 0) {
         plat_printf("ping: open socket error\n");
         return;
     }
 
     int tmo = 3000;//毫秒
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tmo, sizeof(tmo));
+    //setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tmo, sizeof(tmo));
 
     struct sockaddr_in addr;
     plat_memset(&addr, 0, sizeof(addr));
@@ -45,7 +45,7 @@ void ping_run(ping_t *ping, const char *dest, int count, int size, int interval)
     addr.sin_addr.s_addr = inet_addr(dest);
     addr.sin_port = 0;//不需要端口
 
-    connect(s, (const struct sockaddr *)&addr, sizeof(addr));
+    //connect(s, (const struct sockaddr *)&addr, sizeof(addr));
 
     int fill_size = size > PING_BUFFER_SIZE ? PING_BUFFER_SIZE : size;
     for (int i = 0; i < fill_size; i++) {
