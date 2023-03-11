@@ -35,10 +35,12 @@ ssize_t x_sendto(int s, const void* buf, size_t len, int flags,
     ssize_t send_size = 0;//计算实际发了多少
     uint8_t *start = (uint8_t *)buf;
     while (len > 0) {
-        sock_req_t req;
+        static sock_req_t req;
+        plat_memset(&req, 0, sizeof(sock_req_t));
         req.sockfd = s;
         req.data.buf = start;
         req.data.flags = 0;
+        req.data.len = len;
         req.data.addr = (struct x_sockaddr *)dest;
         req.data.addr_len = dest_len;
         req.data.comp_len = 0;
@@ -55,8 +57,4 @@ ssize_t x_sendto(int s, const void* buf, size_t len, int flags,
     }
 
     return send_size;
-}
-
-net_err_t sock_sendto_req_in(struct _func_msg_t *msg) {
-    return NET_ERR_OK;
 }

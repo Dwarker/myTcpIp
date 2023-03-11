@@ -60,7 +60,7 @@ typedef struct _sock_data_t {
     int flags;
     struct x_sockaddr *addr;
     x_socklen_t addr_len;
-    size_t comp_len;
+    ssize_t comp_len;
 }sock_data_t;
 
 typedef struct _sock_req_t {
