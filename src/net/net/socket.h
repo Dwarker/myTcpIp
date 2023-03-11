@@ -48,4 +48,6 @@ struct x_sockaddr_in {
 int x_socket(int family, int type, int protocol);
 ssize_t x_sendto(int s, const void* buf, size_t len, int flags, 
                 const struct x_sockaddr *dest, x_socklen_t dest_len);
+ssize_t x_recvfrom(int s, void* buf, size_t len, int flags, 
+                const struct x_sockaddr *src, x_socklen_t *src_len);
 #endif

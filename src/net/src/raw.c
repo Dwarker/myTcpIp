@@ -53,9 +53,16 @@ end_send_to:
     return err;
 }
 
+static net_err_t raw_recvfrom (struct _sock_t *s, const void *buf, ssize_t len, int flags,
+                        const struct x_sockaddr *dest, x_socklen_t *dest_len, ssize_t *result_len) {
+    
+    return NET_ERR_OK;
+}
+
 sock_t *raw_create(int family, int protocol) {
     static const sock_ops_t raw_ops = {
         .sendto = raw_sendto,
+        .recvfrom = raw_recvfrom,
     };
 
     raw_t *raw = mblock_alloc(&raw_mblock, -1);
