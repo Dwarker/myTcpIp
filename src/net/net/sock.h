@@ -9,6 +9,26 @@
 struct _sock_t;
 typedef int x_socklen_t;
 struct x_sockaddr;
+struct _sock_req_t;
+
+#define SOCK_WAIT_READ  (1 << 0) //读等待
+#define SOCK_WAIT_WRITE (1 << 1) //发送等待
+#define SOCK_WAIT_CONN  (1 << 2) //等待链接
+#define SOCK_WAIT_ALL   (SOCK_WAIT_READ | SOCK_WAIT_WRITE | SOCK_WAIT_CONN)
+
+typedef struct _sock_wait_t {
+    sys_sem_t sem;
+    net_err_t err;
+    int waiting;    //等待当前套接字的应用程序数量
+}sock_wait_t;
+
+net_err_t sock_wait_init(sock_wait_t *wait);
+void sock_wait_destory(sock_wait_t *wait);
+//工作线程调用
+void sock_wait_add(sock_wait_t *wait, int tmo, struct _sock_req_t *req);
+//应用程序调用
+net_err_t sock_wait_enter(sock_wait_t *wait, int tmo);
+net_err_t sock_wait_leave(sock_wait_t *wait, net_err_t err);
 
 typedef struct _sock_ops_t {
     net_err_t (*close) (struct _sock_t *s);
@@ -64,6 +84,9 @@ typedef struct _sock_data_t {
 }sock_data_t;
 
 typedef struct _sock_req_t {
+    sock_wait_t *wait;
+    int wait_tmo;
+
     int sockfd;
     union {
         sock_create_t create;
