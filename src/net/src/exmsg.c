@@ -60,8 +60,10 @@ net_err_t exmsg_func_exec(exmsg_func_t func, void *param) {
 static net_err_t do_func(func_msg_t *func_msg) {
     dbg_info(DBG_MSG, "call func");
 
+    //这里的func如sock_create_req_in
     func_msg->err = func_msg->func(func_msg);
 
+    //发完消息(exmsg_func_exec)后,会等待(等待消息执行结果),这里唤醒等待
     sys_sem_notify(func_msg->wait_sem);
     
     dbg_info(DBG_MSG, "func exec complete");
