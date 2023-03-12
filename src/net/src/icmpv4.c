@@ -2,6 +2,7 @@
 #include "dbg.h"
 #include "ipv4.h"
 #include "protocol.h"
+#include "raw.h"
 
 #if DBG_DISP_ENABLED(DBG_ICMPv4)
 static void display_icmp_packet(char *title, icmpv4_pkt_t *pkt) {
@@ -70,18 +71,10 @@ net_err_t icmpv4_in(ipaddr_t *src_ip, ipaddr_t *netif_in, pktbuf_t *buf) {
     //因为合并操作,包头数据位置可能改变,所以重新获取下包头
     ip_pkt = (ipv4_pkt_t *)pktbuf_data(buf);
 
-    //移除ip包头
-    err = pktbuf_remove_header(buf, iphdr_size);
-    if (err < 0) {
-        dbg_error(DBG_ICMPv4, "remove ip header failed.");
-        return NET_ERR_SIZE;
-    }
-
-    //重新设置游标,后面要检查校验和
-    pktbuf_reset_acc(buf);
-
     //检查icmp包头
-    icmpv4_pkt_t *icmp_pkt = (icmpv4_pkt_t *)pktbuf_data(buf);
+    icmpv4_pkt_t *icmp_pkt = (icmpv4_pkt_t *)(pktbuf_data(buf) + iphdr_size);
+    //下面要检查icmp,所以先跳过ip包头
+    pktbuf_seek(buf, iphdr_size);
     if ((err = is_pkt_ok(icmp_pkt, buf->total_size, buf)) < 0) {
         dbg_warning(DBG_ICMPv4, "icmp pkt error.");
         return err;
@@ -92,9 +85,23 @@ net_err_t icmpv4_in(ipaddr_t *src_ip, ipaddr_t *netif_in, pktbuf_t *buf) {
     switch (icmp_pkt->hdr.type)
     {
     case ICMPv4_ECHO_REQUEST:
+        //移除ip包头
+        err = pktbuf_remove_header(buf, iphdr_size);
+        if (err < 0) {
+            dbg_error(DBG_ICMPv4, "remove ip header failed.");
+            return NET_ERR_SIZE;
+        }
+
+        //重新设置游标,后面要检查校验和
+        pktbuf_reset_acc(buf);
+
         return icmpv4_echo_reply(src_ip, netif_in, buf);
     default:
-        pktbuf_free(buf);
+        err = raw_in(buf);
+        if (err < 0) {
+            dbg_error(DBG_ICMPv4, "raw in failed.");
+            return err;
+        }
         return NET_ERR_OK;
     }
 
