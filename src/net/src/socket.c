@@ -107,3 +107,27 @@ ssize_t x_recvfrom(int s, void* buf, size_t len, int flags,
         }
     }
 }
+
+int x_setsockopt(int s, int level, int optname, const char *optval, int len) {
+    if (!optval || !len) {
+        dbg_error(DBG_SOCKET, "param error");
+        return -1;
+    }
+
+    sock_req_t req;
+    req.wait = (sock_wait_t *)0;
+    req.wait_tmo = 0;
+    req.sockfd = s;
+    req.opt.level = level;
+    req.opt.optname = optname;
+    req.opt.optval = optval;
+    req.opt.len = len;
+
+    net_err_t err = exmsg_func_exec(sock_setsockopt_req_in, &req);
+    if (err < 0) {
+        dbg_error(DBG_SOCKET, "set sockopt failed.");
+        return -1;
+    }
+
+    return 0;
+}

@@ -36,8 +36,13 @@ void ping_run(ping_t *ping, const char *dest, int count, int size, int interval)
         return;
     }
 
-    int tmo = 3000;//毫秒
-    //setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tmo, sizeof(tmo));
+    //int tmo = 3000;//毫秒
+    #if 1
+    struct timeval tmo;
+    tmo.tv_sec = 3;
+    tmo.tv_usec = 0;
+    #endif
+    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tmo, sizeof(tmo));
 
     struct sockaddr_in addr;
     plat_memset(&addr, 0, sizeof(addr));
