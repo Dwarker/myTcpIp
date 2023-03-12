@@ -56,7 +56,9 @@ end_send_to:
 static net_err_t raw_recvfrom (struct _sock_t *s, const void *buf, ssize_t len, int flags,
                         const struct x_sockaddr *dest, x_socklen_t *dest_len, ssize_t *result_len) {
     
-    return NET_ERR_OK;
+    //告诉上层应用程序,数据还没到,需要等待
+    *result_len = 0;
+    return NET_ERR_NEED_WAIT;
 }
 
 sock_t *raw_create(int family, int protocol) {
@@ -77,6 +79,8 @@ sock_t *raw_create(int family, int protocol) {
         mblock_free(&raw_mblock, raw);
         return (sock_t *)0;
     }
+
+    ((sock_t *)raw)->rcv_wait = &raw->recv_wait;
 
     nlist_insert_last(&raw_list, &raw->base.node);
     return (sock_t *)raw;

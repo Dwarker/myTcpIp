@@ -6,6 +6,8 @@
 int x_socket(int family, int type, int protocol) {
     sock_req_t req;
 
+    req.wait = (sock_wait_t *)0;
+    req.wait_tmo = 0;
     req.sockfd = -1;
     req.create.family = family;
     req.create.protocol = protocol;
@@ -38,6 +40,8 @@ ssize_t x_sendto(int s, const void* buf, size_t len, int flags,
         static sock_req_t req;
         plat_memset(&req, 0, sizeof(sock_req_t));
         req.sockfd = s;
+        req.wait = (sock_wait_t *)0;
+        req.wait_tmo = 0;
         req.data.buf = start;
         req.data.flags = 0;
         req.data.len = len;
@@ -48,6 +52,12 @@ ssize_t x_sendto(int s, const void* buf, size_t len, int flags,
         net_err_t err = exmsg_func_exec(sock_sendto_req_in, &req);
         if (err < 0) {
             dbg_error(DBG_SOCKET, "sendto socket failed.");
+            return -1;
+        }
+
+        //tcp发送的时候,可能会等待
+        if(req.wait && ((err = sock_wait_enter(req.wait, req.wait_tmo)) < 0)) {
+            dbg_error(DBG_SOCKET, "send failed.");
             return -1;
         }
 
@@ -66,25 +76,34 @@ ssize_t x_recvfrom(int s, void* buf, size_t len, int flags,
         return -1;
     }
 
-    static sock_req_t req;
-    plat_memset(&req, 0, sizeof(sock_req_t));
-    req.sockfd = s;
-    req.data.buf = buf;
-    req.data.flags = 0;
-    req.data.len = len;
-    req.data.addr = (struct x_sockaddr *)src;
-    req.data.addr_len = src_len;
-    req.data.comp_len = 0;
+    while (1) {
+        static sock_req_t req;
+        plat_memset(&req, 0, sizeof(sock_req_t));
+        req.wait = (sock_wait_t *)0;
+        req.wait_tmo = 0;
+        req.sockfd = s;
+        req.data.buf = buf;
+        req.data.flags = 0;
+        req.data.len = len;
+        req.data.addr = (struct x_sockaddr *)src;
+        req.data.addr_len = src_len;
+        req.data.comp_len = 0;
 
-    net_err_t err = exmsg_func_exec(sock_recvfrom_req_in, &req);
-    if (err < 0) {
-        dbg_error(DBG_SOCKET, "recvfrom socket failed.");
-        return -1;
+        net_err_t err = exmsg_func_exec(sock_recvfrom_req_in, &req);
+        if (err < 0) {
+            dbg_error(DBG_SOCKET, "recvfrom socket failed.");
+            return -1;
+        }
+
+        if (req.data.comp_len) {
+            return (ssize_t)req.data.comp_len;
+        }
+
+        //如果没有数据则等待,有数据到了则进入循环再次读取
+        err = sock_wait_enter(req.wait, req.wait_tmo);
+        if (err < 0) {
+            dbg_error(DBG_SOCKET, "recv failed.");
+            return -1;
+        }
     }
-
-    if (req.data.comp_len) {
-        return (ssize_t)req.data.comp_len;
-    }
-
-    return -1;
 }

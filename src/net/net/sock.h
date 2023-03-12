@@ -28,7 +28,7 @@ void sock_wait_destory(sock_wait_t *wait);
 void sock_wait_add(sock_wait_t *wait, int tmo, struct _sock_req_t *req);
 //应用程序调用
 net_err_t sock_wait_enter(sock_wait_t *wait, int tmo);
-net_err_t sock_wait_leave(sock_wait_t *wait, net_err_t err);
+void sock_wait_leave(sock_wait_t *wait, net_err_t err);
 
 typedef struct _sock_ops_t {
     net_err_t (*close) (struct _sock_t *s);
@@ -54,6 +54,10 @@ typedef struct _sock_t {
     int err;    //ops中回调函数的返回值存放
     int rcv_tmo;   //ping命令的收超时
     int snd_tmo;   //tcp的send(用户态接口)发送超时,
+
+    sock_wait_t *rcv_wait;
+    sock_wait_t *snd_wait;
+    sock_wait_t *conn_wait;
 
     nlist_node_t node;
 }sock_t;

@@ -67,7 +67,7 @@ net_err_t sock_wait_enter(sock_wait_t *wait, int tmo) {
     return wait->err;
 }
 //工作线程调用
-net_err_t sock_wait_leave(sock_wait_t *wait, net_err_t err) {
+void sock_wait_leave(sock_wait_t *wait, net_err_t err) {
     if (wait->waiting > 0) {
         wait->waiting--;
         sys_sem_notify(wait->sem);
@@ -93,6 +93,9 @@ net_err_t sock_init(sock_t *sock, int family, int protocol, const sock_ops_t *op
     sock->rcv_tmo = 0;
     sock->snd_tmo = 0;
     nlist_node_init(&sock->node);
+    sock->rcv_wait = (sock_wait_t *)0;
+    sock->snd_wait = (sock_wait_t *)0;
+    sock->conn_wait = (sock_wait_t *)0;
     return NET_ERR_OK;
 }
 
@@ -156,7 +159,11 @@ net_err_t sock_sendto_req_in(struct _func_msg_t *msg) {
 
     net_err_t err = sock->ops->sendto(sock, data->buf, data->len, data->flags,
                         data->addr, *data->addr_len, &data->comp_len);
-
+    if (err == NET_ERR_NEED_WAIT) {
+        if (sock->snd_wait) {
+            sock_wait_add(sock->snd_wait, sock->snd_tmo, req);
+        }
+    }
     return NET_ERR_OK;
 }
 
@@ -178,6 +185,10 @@ net_err_t sock_recvfrom_req_in(struct _func_msg_t *msg) {
 
     net_err_t err = sock->ops->recvfrom(sock, data->buf, data->len, data->flags,
                         data->addr, data->addr_len, &data->comp_len);
-
+    if (err == NET_ERR_NEED_WAIT) {
+        if (sock->rcv_wait) {
+            sock_wait_add(sock->rcv_wait, sock->rcv_tmo, req);
+        }
+    }
     return NET_ERR_OK;
 }
