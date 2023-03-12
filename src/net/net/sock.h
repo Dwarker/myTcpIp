@@ -10,6 +10,7 @@ struct _sock_t;
 typedef int x_socklen_t;
 struct x_sockaddr;
 struct _sock_req_t;
+struct _sock_t;
 
 #define SOCK_WAIT_READ  (1 << 0) //读等待
 #define SOCK_WAIT_WRITE (1 << 1) //发送等待
@@ -29,6 +30,7 @@ void sock_wait_add(sock_wait_t *wait, int tmo, struct _sock_req_t *req);
 //应用程序调用
 net_err_t sock_wait_enter(sock_wait_t *wait, int tmo);
 void sock_wait_leave(sock_wait_t *wait, net_err_t err);
+void sock_wakeup(struct _sock_t *sock, int type, int err);
 
 typedef struct _sock_ops_t {
     net_err_t (*close) (struct _sock_t *s);

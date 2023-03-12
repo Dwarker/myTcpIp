@@ -50,5 +50,6 @@
 #define IP_FRAG_SCAN_PERIOD 1   //秒 IP分片扫描时间,每秒扫描一次
 
 #define IP_FRAG_TMO         10  //秒, IP分片最多等待10S时间,超过则释放掉对应的全部分片
-#define RAW_MAX_NR  10
+#define RAW_MAX_NR          10
+#define RAW_MAX_RECV        10
 #endif

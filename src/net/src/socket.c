@@ -91,7 +91,7 @@ ssize_t x_recvfrom(int s, void* buf, size_t len, int flags,
 
         net_err_t err = exmsg_func_exec(sock_recvfrom_req_in, &req);
         if (err < 0) {
-            dbg_error(DBG_SOCKET, "recvfrom socket failed.");
+            dbg_error(DBG_SOCKET, "recvfrom socket failed:%d.", err);
             return -1;
         }
 
