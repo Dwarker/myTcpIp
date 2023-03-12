@@ -90,11 +90,16 @@ static net_err_t raw_recvfrom (struct _sock_t *s, void *buf, ssize_t len, int fl
     return NET_ERR_OK;
 }
 
+net_err_t raw_close(sock_t *sock) {
+    return NET_ERR_OK;
+}
+
 sock_t *raw_create(int family, int protocol) {
     static const sock_ops_t raw_ops = {
         .sendto = raw_sendto,
         .recvfrom = raw_recvfrom,
         .setopt = sock_setopt,
+        .close = raw_close,
     };
 
     raw_t *raw = mblock_alloc(&raw_mblock, -1);
