@@ -42,7 +42,7 @@ void ping_run(ping_t *ping, const char *dest, int count, int size, int interval)
     tmo.tv_sec = 3;
     tmo.tv_usec = 0;
     #endif
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tmo, sizeof(tmo));
+    setsockopt(s, SOL_SOCKET, SO_RCVITIMEO, (const char *)&tmo, sizeof(tmo));
 
     struct sockaddr_in addr;
     plat_memset(&addr, 0, sizeof(addr));
