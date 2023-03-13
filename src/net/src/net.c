@@ -25,7 +25,7 @@ net_err_t net_init(void) {
     pktbuf_init();
     netif_init();
     net_timer_init();
-    loop_init();
+    
     ether_init();
 
     arp_init();//会用到定时器,所以放在定时器模块初始化之后
@@ -34,6 +34,8 @@ net_err_t net_init(void) {
 
     socket_init();
     raw_init();
+
+    loop_init();
 
     return NET_ERR_OK;
 }

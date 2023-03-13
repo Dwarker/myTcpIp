@@ -10,7 +10,7 @@
 static netif_t netif_buffer[NETIF_DEV_CNT];
 static mblock_t netif_mblock;
 static nlist_t netif_list;//用来组织打开的网络接口
-static netif_t *netif_default;//默认使用该网卡进行发送
+static netif_t *netif_default;//设备所连接的路由器的IP,即网关
 
 static const link_layer_t *link_layers[NETIF_TYPE_SIZE];
 
@@ -221,7 +221,7 @@ net_err_t netif_set_active(netif_t *netif) {
     rt_add(&ip, &netif->netmask, ipaddr_get_any(), netif);
 
     //填入本网卡到本网卡的路由,也属于是本地网络,所以下一跳填空
-    ipaddr_from_buf(&ip, "255.255.255.255");
+    ipaddr_from_str(&ip, "255.255.255.255");
     rt_add(&netif->ipaddr, &ip, ipaddr_get_any(), netif);
 
     netif->state = NETIF_ACTIVE;
@@ -253,12 +253,13 @@ net_err_t netif_set_deactive(netif_t *netif) {
     //?
     if (netif_default == netif) {
         netif_default = (netif_t *)0;
+        rt_remove(ipaddr_get_any(), ipaddr_get_any());
     }
 
     ipaddr_t ip = ipaddr_get_net(&netif->ipaddr, &netif->netmask);
     rt_remove(&ip, &netif->netmask);
 
-    ipaddr_from_buf(&ip, "255.255.255.255");
+    ipaddr_from_str(&ip, "255.255.255.255");
     rt_remove(&netif->ipaddr, &ip);
 
     netif->state = NETIF_OPENED;
@@ -283,6 +284,14 @@ net_err_t netif_close(netif_t *netif) {
 }
 void netif_set_default(netif_t *netif) {
     netif_default = netif;
+
+    if (!ipaddr_is_any(&netif->gateway)) {
+        //逻辑似乎有问题
+        if (netif_default) {
+            rt_remove(ipaddr_get_any(), ipaddr_get_any());
+        }
+        rt_add(ipaddr_get_any(), ipaddr_get_any(), &netif->gateway, netif);
+    }
 }
 
 netif_t* netif_get_default(void) {
