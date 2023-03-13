@@ -29,4 +29,5 @@ void ipaddr_from_buf(ipaddr_t *dest, uint8_t *ip_buf);
 int ipaddr_is_local_broadcast(const ipaddr_t *ipaddr);
 int ipaddr_is_direct_broadcast(const ipaddr_t *ipaddr, const ipaddr_t *netmask);
 int ipaddr_is_match(const ipaddr_t *dest, const ipaddr_t *src, const ipaddr_t *netmask);
+ipaddr_t ipaddr_get_net(const ipaddr_t *ipaddr, const ipaddr_t *netmask);
 #endif

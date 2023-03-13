@@ -24,6 +24,35 @@ void rt_init(void) {
     mblock_init(&rt_mblock, rt_table, sizeof(rentry_t), IP_RTTABLE_SIZE, NLOCKER_NONE);
 }
 
+void rt_add(ipaddr_t *net, ipaddr_t *mask, ipaddr_t * next_hop, netif_t *netif) {
+    rentry_t *entry = (rentry_t *)mblock_alloc(&rt_mblock, -1);//这里不能等待,否则可能会卡死协议栈的启动
+    if (!entry) {
+        dbg_warning(DBG_IP, "alloc rt entry failed.");
+        return;
+    }
+
+    ipaddr_copy(&entry->net, net);
+    ipaddr_copy(&entry->mask, mask);
+    ipaddr_copy(&entry->next_hop, next_hop);
+    entry->netif = netif;
+
+    nlist_insert_last(&rt_list, &entry->node);
+}
+
+void rt_remove(ipaddr_t *net, ipaddr_t *mask) {
+    nlist_node_t *node;
+
+    nlist_for_each(node, &rt_list) {
+        rentry_t *entry = nlist_entry(node, rentry_t, node);
+        if (ipaddr_is_equal(&entry->net, net) 
+            && ipaddr_is_equal(&entry->mask, mask)) {
+            nlist_remove(&rt_list, node);
+
+            return;
+        }
+    }
+}
+
 static int get_data_size(ipv4_pkt_t *pkt) {
     return pkt->hdr.total_len - ipv4_hdr_size(pkt);//数据大小
 }
@@ -275,7 +304,7 @@ net_err_t ipv4_init(void) {
     }
 
     rt_init();
-    
+
     dbg_info(DBG_IP, "done");
     return NET_ERR_OK;
 }

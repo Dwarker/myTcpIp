@@ -5,6 +5,7 @@
 #include "exmsg.h"
 #include "protocol.h"
 #include "ether.h"
+#include "ipv4.h"
 
 static netif_t netif_buffer[NETIF_DEV_CNT];
 static mblock_t netif_mblock;
@@ -209,6 +210,20 @@ net_err_t netif_set_active(netif_t *netif) {
         }
     }
 
+    //添加路由,将该网卡添加到路由中
+    //获取网络号
+    ipaddr_t ip = ipaddr_get_net(&netif->ipaddr, &netif->netmask);
+
+    //填入本地路由
+    //因为本地网络里面,目标IP的网络号和本地一样,所以采用直接交付的方式
+    //这样下一跳的地址应该填入目标计算机的IP,但是目前还不知道目标IP的地址,
+    //所以先填空
+    rt_add(&ip, &netif->netmask, ipaddr_get_any(), netif);
+
+    //填入本网卡到本网卡的路由,也属于是本地网络,所以下一跳填空
+    ipaddr_from_buf(&ip, "255.255.255.255");
+    rt_add(&netif->ipaddr, &ip, ipaddr_get_any(), netif);
+
     netif->state = NETIF_ACTIVE;
 
     display_netif_list();
@@ -239,6 +254,12 @@ net_err_t netif_set_deactive(netif_t *netif) {
     if (netif_default == netif) {
         netif_default = (netif_t *)0;
     }
+
+    ipaddr_t ip = ipaddr_get_net(&netif->ipaddr, &netif->netmask);
+    rt_remove(&ip, &netif->netmask);
+
+    ipaddr_from_buf(&ip, "255.255.255.255");
+    rt_remove(&netif->ipaddr, &ip);
 
     netif->state = NETIF_OPENED;
 
