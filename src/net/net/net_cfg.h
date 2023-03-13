@@ -52,4 +52,6 @@
 #define IP_FRAG_TMO         10  //秒, IP分片最多等待10S时间,超过则释放掉对应的全部分片
 #define RAW_MAX_NR          10
 #define RAW_MAX_RECV        10
+
+#define IP_RTTABLE_SIZE     20
 #endif

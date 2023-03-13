@@ -364,7 +364,7 @@ int main (void) {
 	exmsg_func_exec(test_func, &arg);
 
 	ping_t p;
-	ping_run(&p, friend0_ip, 4, 64, 1000);
+	ping_run(&p, "8.8.8.8", 4, 64, 1000);
 	
 	char cmd[32], param[32];
 	while (1) {

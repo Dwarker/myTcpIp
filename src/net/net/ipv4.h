@@ -68,6 +68,17 @@ typedef struct _ip_frag_t {
     nlist_node_t node;
 }ip_frag_t;
 
+typedef struct _rentry_t {
+    ipaddr_t net;   //网络目标
+    ipaddr_t mask;
+    ipaddr_t next_hop;
+    netif_t *netif; //将数据从这个ip中发送出去
+
+    nlist_node_t node;
+}rentry_t;
+
+void rt_init(void);
+
 net_err_t ipv4_init(void);
 net_err_t ipv4_in(netif_t *netif, pktbuf_t *buf);
 net_err_t ipv4_out(uint8_t protocol, ipaddr_t *dest, ipaddr_t *src, pktbuf_t *buf);
