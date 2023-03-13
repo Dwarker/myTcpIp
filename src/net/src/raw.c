@@ -58,8 +58,8 @@ static net_err_t raw_sendto (struct _sock_t *s, const void *buf, ssize_t len, in
         goto end_send_to;
     }
 
-    //这里暂时使用默认网卡
-    err = ipv4_out(s->protocol, &dest_ip, &netif_get_default()->ipaddr, pktbuf);
+    //这里local_ip可能为空,所以需要在ipv4_out中查找合适的网卡
+    err = ipv4_out(s->protocol, &dest_ip, &s->local_ip, pktbuf);
     if (err < 0) {
         dbg_error(DBG_RAW, "send error.");
         goto end_send_to;
