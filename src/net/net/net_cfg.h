@@ -12,10 +12,11 @@
 #define DBG_TOOLS  DBG_LEVEL_ERROR
 #define DBG_TIMER  DBG_LEVEL_ERROR
 #define DBG_ARP    DBG_LEVEL_ERROR
-#define DBG_IP     DBG_LEVEL_INFO
+#define DBG_IP     DBG_LEVEL_ERROR
 #define DBG_ICMPv4 DBG_LEVEL_ERROR
 #define DBG_SOCKET DBG_LEVEL_ERROR
 #define DBG_RAW    DBG_LEVEL_ERROR
+#define DBG_UDP    DBG_LEVEL_INFO
 
 #define NET_ENDIAN_LITTLE   1
 
@@ -51,7 +52,10 @@
 
 #define IP_FRAG_TMO         10  //秒, IP分片最多等待10S时间,超过则释放掉对应的全部分片
 #define RAW_MAX_NR          10
-#define RAW_MAX_RECV        10
+#define RAW_MAX_RECV        50
 
 #define IP_RTTABLE_SIZE     20
+
+#define UDP_MAX_NR          10
+#define UDP_MAX_RECV        50
 #endif
