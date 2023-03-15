@@ -10,16 +10,16 @@ int x_inet_pton(int family, const char *strptr, void *addrptr);
 const char *x_inet_ntop(int family, const char *addrptr, char *strptr, size_t len);
 
 #undef htons
-#define htons(x)    x_htons(v)
+#define htons(x)    x_htons(x)
 
-#undef x_ntohs
-#define ntohs(x)    x_ntohs(v)
+#undef ntohs
+#define ntohs(x)    x_ntohs(x)
 
-#undef x_htonl
-#define htonl(x)    x_htonl(v)
+#undef htonl
+#define htonl(x)    x_htonl(x)
 
-#undef x_ntohl
-#define ntohl(x)    x_ntohl(v)
+#undef ntohl
+#define ntohl(x)    x_ntohl(x)
 
 #define inet_ntoa(in)   x_inet_ntoa(in)
 #define inet_addr(str)  x_inet_addr(str)

@@ -4,6 +4,7 @@
 #include "dbg.h"
 #include "socket.h"
 #include "raw.h"
+#include "udp.h"
 
 #define SOCKET_MAX_NR   (RAW_MAX_NR)
 
@@ -132,7 +133,8 @@ net_err_t sock_create_req_in(struct _func_msg_t *msg) {
         int protocol;
         sock_t * (*create) (int family, int protocol);
     }sock_tbl[] = {
-        [SOCK_RAW] = {.protocol = IPPROTO_ICMP, .create = raw_create,}
+        [SOCK_RAW] = {.protocol = IPPROTO_ICMP, .create = raw_create,},
+        [SOCK_DGRAM] = {.protocol = IPPROTO_UDP, .create = udp_create,},
     };
     sock_req_t *req = (sock_req_t *)msg->param;
     sock_create_t *param = &req->create;

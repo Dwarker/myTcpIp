@@ -11,5 +11,5 @@ typedef struct _udp_t {
 }udp_t;
 
 net_err_t udp_init(void);
-
+sock_t *udp_create(int family, int protocol);
 #endif

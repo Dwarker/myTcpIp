@@ -1,6 +1,6 @@
 #include "udp_echo_server.h"
 #include "sys_plat.h"
-#include <WinSock2.h>
+#include "net_api.h"
 
 static uint16_t server_port;
 
@@ -8,7 +8,7 @@ void udp_echo_server(void *arg) {
     WSADATA wsdata;
     WSAStartup(MAKEWORD(2, 2), &wsdata);
 
-    SOCKET s = socket(AF_INET, SOCK_DGRAM, 0);
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
     if (s < 0) {
         plat_printf("udp echo server: open socket error\n");
         goto end;
@@ -19,10 +19,10 @@ void udp_echo_server(void *arg) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(server_port);
-    if (bind(s, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        plat_printf("bind error\n");
-        goto end;
-    }
+    //if (bind(s, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    //    plat_printf("bind error\n");
+    //    goto end;
+    //}
 
     while(1) {
         struct sockaddr_in client_addr;
@@ -51,7 +51,7 @@ void udp_echo_server_start(int port) {
     printf("udp echo server port: %d\n", port);
 
     server_port = port;
-    if (sys_thread_create(udp_echo_server), (void *)0 == SYS_THREAD_INVALID) {
+    if (sys_thread_create(udp_echo_server, (void *)0) == SYS_THREAD_INVALID) {
         printf("create udp server thread faoled.\n");
         return;
     }
