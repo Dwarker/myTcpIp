@@ -12,6 +12,7 @@
 #include "echo/tcp_echo_client.h"
 #include "echo/tcp_echo_server.h"
 #include "echo/udp_echo_client.h"
+#include "echo/udp_echo_server.h"
 #include "net.h"
 #include "dbg.h"
 #include "nlist.h"
@@ -360,7 +361,8 @@ int main (void) {
 
 	#endif
 
-	udp_echo_client_start(friend0_ip, 1000);
+	//udp_echo_client_start(friend0_ip, 1000);
+	udp_echo_server_start(2000);
 
 	//请求协议栈执行某函数,这里是请求执行test_func
 	int arg = 0x1234;
