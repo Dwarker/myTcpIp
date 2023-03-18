@@ -3,6 +3,7 @@
 #include "mblock.h"
 #include "tools.h"
 #include "socket.h"
+#include "protocol.h"
 
 static udp_t udp_tbl[UDP_MAX_NR];
 static mblock_t udp_mblock;
@@ -15,6 +16,33 @@ net_err_t udp_init(void) {
     mblock_init(&udp_mblock, udp_tbl, sizeof(udp_t), UDP_MAX_NR, NLOCKER_NONE);
     dbg_info(DBG_UDP, "done");
     return NET_ERR_OK;
+}
+
+static int is_port_used(int port) {
+    nlist_node_t *node;
+    nlist_for_each(node, &udp_list) {
+        sock_t *sock = (sock_t *)nlist_entry(node, sock_t, node);
+        if (sock->local_port == port) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static net_err_t alloc_port(sock_t *sock) {
+    static int search_index = NET_PORT_DYN_START;
+    for (int i = NET_PORT_DYN_START; i < NET_PORT_DYN_END; i++) {
+        int port = search_index++;
+        if (search_index > NET_PORT_DYN_END) {
+            search_index = NET_PORT_DYN_START;
+        }
+        if (!is_port_used(port)) {
+            sock->local_port = port;
+            return NET_ERR_OK;
+        }
+    }
+
+    return NET_ERR_NONE;
 }
 
 static net_err_t udp_sendto (struct _sock_t *s, const void *buf, ssize_t len, int flags,
@@ -31,6 +59,12 @@ static net_err_t udp_sendto (struct _sock_t *s, const void *buf, ssize_t len, in
     if (s->remote_port && (s->remote_port == dport)) {
         dbg_error(DBG_UDP, "dest is incorrect");
         return NET_ERR_PARAM;
+    }
+
+    //端口分配
+    if (!s->local_port && ((s->err = alloc_port(s)) < 0)) {
+        dbg_error(DBG_UDP, "no port avaliable");
+        return NET_ERR_NONE;
     }
 
     pktbuf_t *pktbuf = pktbuf_alloc((int)len);
