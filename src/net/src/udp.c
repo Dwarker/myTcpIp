@@ -78,6 +78,13 @@ static net_err_t udp_sendto (struct _sock_t *s, const void *buf, ssize_t len, in
         dbg_error(DBG_RAW, "copy data error");
         goto end_send_to;
     }
+    
+    //这里local_ip可能为空,则在ip层中会选择合适的网卡发送
+    err = udp_out(&dest_ip, dport, &s->local_ip, s->local_port, pktbuf);
+    if (err < 0) {
+        dbg_error(DBG_UDP, "send error");
+        goto end_send_to;
+    }
 
     *result_len = (ssize_t)len;
 
@@ -123,4 +130,26 @@ sock_t *udp_create(int family, int protocol) {
 create_failed:
     sock_uninit(&udp->base);
     return (sock_t *)0;
+}
+
+net_err_t udp_out(ipaddr_t *dest, uint16_t dport, ipaddr_t *src, uint16_t sport, pktbuf_t *buf) {
+    net_err_t err = pktbuf_add_header(buf, sizeof(udp_hdr_t), 1);
+    if (err < 0) {
+        dbg_error(DBG_UDP, "add header failed.");
+        return NET_ERR_SIZE;
+    }
+
+    udp_hdr_t *udp_hdr = (udp_hdr_t *)pktbuf_data(buf);
+    udp_hdr->src_port = x_htons(sport);
+    udp_hdr->dest_port = x_htons(dport);
+    udp_hdr->total_len = x_htons(buf->total_size);
+    udp_hdr->checksum = 0; //后面计算(校验和为0的情况下,对端不用校验校验和)
+
+    err = ipv4_out(NET_PROTOCOL_UDP, dest, src, buf);
+    if (err < 0) {
+        dbg_error(DBG_UDP, "udp out err");
+        return err;
+    }
+
+    return NET_ERR_OK;
 }
