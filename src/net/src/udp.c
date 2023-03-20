@@ -133,6 +133,16 @@ create_failed:
 }
 
 net_err_t udp_out(ipaddr_t *dest, uint16_t dport, ipaddr_t *src, uint16_t sport, pktbuf_t *buf) {
+    if (ipaddr_is_any(src)) {
+        rentry_t *rt = rt_find(dest);
+        if (rt == (rentry_t *)0) {
+            dbg_error(DBG_UDP, "no route");
+            return NET_ERR_UNREACH;
+        }
+
+        src = &rt->netif->ipaddr;
+    }
+    
     net_err_t err = pktbuf_add_header(buf, sizeof(udp_hdr_t), 1);
     if (err < 0) {
         dbg_error(DBG_UDP, "add header failed.");
@@ -140,10 +150,11 @@ net_err_t udp_out(ipaddr_t *dest, uint16_t dport, ipaddr_t *src, uint16_t sport,
     }
 
     udp_hdr_t *udp_hdr = (udp_hdr_t *)pktbuf_data(buf);
+    udp_hdr->checksum = 0;//先默认为0
     udp_hdr->src_port = x_htons(sport);
     udp_hdr->dest_port = x_htons(dport);
     udp_hdr->total_len = x_htons(buf->total_size);
-    udp_hdr->checksum = 0; //后面计算(校验和为0的情况下,对端不用校验校验和)
+    udp_hdr->checksum = checksum_peso(buf, dest, src, NET_PROTOCOL_UDP); //校验和为0的情况下,对端不用校验校验和
 
     err = ipv4_out(NET_PROTOCOL_UDP, dest, src, buf);
     if (err < 0) {
