@@ -106,10 +106,52 @@ end_send_to:
     return err;
 }
 
+
+static net_err_t udp_recvfrom (struct _sock_t *s, void *buf, ssize_t len, int flags,
+                        struct x_sockaddr *src, x_socklen_t *src_len, ssize_t *result_len) {
+    udp_t *udp = (udp_t *)s;
+
+    nlist_node_t *first = nlist_remove_first(&udp->recv_list);
+    if (!first) {
+        //告诉上层应用程序,数据还没到,需要等待
+        *result_len = 0;
+        return NET_ERR_NEED_WAIT;
+    }
+    
+    //
+    pktbuf_t *pktbuf = nlist_entry(first, pktbuf_t, node);
+    udp_from_t *from = (udp_from_t *)pktbuf_data(pktbuf);
+
+    struct x_sockaddr_in * addr = (struct x_sockaddr_in *)src;
+    plat_memset(addr, 0, sizeof(struct x_sockaddr_in));
+    addr->sin_family = AF_INET; //只支持IP4
+    addr->sin_port = x_htons(from->port);
+    ipaddr_to_buf(&from->from, addr->sin_addr.addr_array);
+
+    //移除IP+port头部
+    pktbuf_remove_header(pktbuf, sizeof(udp_from_t));
+
+    //读取数据
+    int size = (pktbuf->total_size > (int)len) ? (int)len : pktbuf->total_size;
+    pktbuf_reset_acc(pktbuf);
+
+    net_err_t err = pktbuf_read(pktbuf, buf, size);
+    if (err < 0) {
+        pktbuf_free(pktbuf);
+        dbg_error(DBG_RAW, "pktbuf read error");
+        return err;
+    }
+
+    pktbuf_free(pktbuf);
+    *result_len = size;
+    return NET_ERR_OK;
+}
+
 sock_t *udp_create(int family, int protocol) {
     static const sock_ops_t udp_ops = {
         .setopt = sock_setopt,
         .sendto = udp_sendto,
+        .recvfrom = udp_recvfrom,
     };
 
     udp_t *udp = mblock_alloc(&udp_mblock, -1);
