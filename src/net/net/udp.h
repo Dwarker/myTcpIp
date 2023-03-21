@@ -29,4 +29,6 @@ net_err_t udp_init(void);
 sock_t *udp_create(int family, int protocol);
 net_err_t udp_out(ipaddr_t *dest, uint16_t dport, ipaddr_t *src, uint16_t sport, pktbuf_t *buf);
 
+//src_ip:该数据报来自哪里 dest_ip:该数据报从哪个网卡接收的
+net_err_t udp_in(pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip);
 #endif

@@ -7,6 +7,7 @@
 #include "mblock.h"
 #include "timer.h"
 #include "raw.h"
+#include "udp.h"
 
 static uint16_t packet_id = 0;
 
@@ -408,16 +409,23 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
             break;
         }
     case NET_PROTOCOL_UDP:
-        //不管发过来的是什么udp数据,暂时都回端口不可达
-        iphdr_htons(pkt);
-        icmpv4_out_unreach(src_ip, &netif->ipaddr, ICMPv4_UNREACH_PORT, buf);
-        break;
+        net_err_t err = udp_in(buf, src_ip, dest_ip);
+        if (err < 0) {
+            dbg_warning(DBG_IP, "udp in error");
+
+            if (err == NET_ERR_UNREACH) {
+                iphdr_htons(pkt);
+                icmpv4_out_unreach(src_ip, &netif->ipaddr, ICMPv4_UNREACH_PORT, buf);
+            }
+            return err;
+        }
+        return NET_ERR_OK;
     case NET_PROTOCOL_TCP:
         break;
     default:
         //实际上这个默认分支不会执行到
         dbg_warning(DBG_IP, "unknow protocol");
-        net_err_t err = raw_in(buf);
+        err = raw_in(buf);
         if (err < 0) {
             dbg_warning(DBG_IP, "raw in error");
             return err;
