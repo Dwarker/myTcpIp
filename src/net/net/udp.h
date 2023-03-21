@@ -5,6 +5,11 @@
 #include "pktbuf.h"
 
 #pragma pack(1)
+typedef struct _udp_from_t {
+    ipaddr_t from;
+    uint16_t port;
+}udp_from_t;
+
 typedef struct _udp_hdr_t {
     uint16_t src_port;
     uint16_t dest_port;
