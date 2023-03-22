@@ -97,8 +97,7 @@ net_err_t udp_bind(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t
         }
 
         //后半个判断,主要是允许不同的ip可以绑定到同一个端口上
-        if ((s->local_port == port) &&
-             (ipaddr_is_equal(&s->local_ip, local_ip))) {
+        if ((s->local_port == port) && (ipaddr_is_equal(&s->local_ip, &local_ip))) {
             udp = u;
             break;
         }

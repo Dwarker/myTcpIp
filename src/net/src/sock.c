@@ -202,7 +202,7 @@ net_err_t sock_sendto_req_in(struct _func_msg_t *msg) {
 net_err_t sock_send(struct _sock_t *s, const void *buf, ssize_t len, int flags, ssize_t *result_len) {
     struct x_sockaddr_in dest;
     dest.sin_family = s->family;
-    dest.sin_port = x_htons(s->remote_port);
+    dest.sin_port = x_htons(s->remote_port);//这里原始套接字调用的时候,这个端口为0,本身该套接字也用不到端口号
     ipaddr_to_buf(&s->remote_ip, dest.sin_addr.addr_array);
 
     return s->ops->sendto(s, buf, len, flags, (const struct x_sockaddr *)&dest, sizeof(dest), result_len);
