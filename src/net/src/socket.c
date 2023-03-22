@@ -148,3 +148,29 @@ int x_close(int s) {
 
     return 0;
 }
+
+int x_connect(int s, const struct x_sockaddr *addr, x_socklen_t len) {
+    if ((!addr) || (len != sizeof(struct x_sockaddr)) || (s < 0)) {
+        dbg_error(DBG_SOCKET, "param error");
+        return -1;
+    }
+
+    if (addr->sin_family != AF_INET) {
+        dbg_error(DBG_SOCKET, "family error");
+        return -1;
+    }
+
+    sock_req_t req;
+    req.wait = 0;
+    req.sockfd = s;
+    req.conn.addr = (struct x_sockaddr *)addr;
+    req.conn.addr_len = len;
+
+    net_err_t err = exmsg_func_exec(sock_connect_req_in, &req);
+    if (err < 0) {
+        dbg_error(DBG_SOCKET, "conn failed.");
+        return -1;
+    }
+
+    return 0;
+}

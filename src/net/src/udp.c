@@ -84,7 +84,7 @@ static net_err_t udp_sendto (struct _sock_t *s, const void *buf, ssize_t len, in
         return NET_ERR_PARAM;
     }
 
-    if (s->remote_port && (s->remote_port == dport)) {
+    if (s->remote_port && (s->remote_port != dport)) {
         dbg_error(DBG_UDP, "dest is incorrect");
         return NET_ERR_PARAM;
     }
@@ -183,12 +183,19 @@ net_err_t udp_close(sock_t *sock) {
     return NET_ERR_OK;
 }
 
+net_err_t udp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len) {
+    sock_connect(s, addr, addr_len);
+    display_udp_list();
+    return NET_ERR_OK;
+}
+
 sock_t *udp_create(int family, int protocol) {
     static const sock_ops_t udp_ops = {
         .setopt = sock_setopt,
         .sendto = udp_sendto,
         .recvfrom = udp_recvfrom,
         .close = udp_close,
+        .connect = udp_connect,
     };
 
     udp_t *udp = mblock_alloc(&udp_mblock, -1);
