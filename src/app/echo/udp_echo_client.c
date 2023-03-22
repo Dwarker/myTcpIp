@@ -45,7 +45,8 @@ int udp_echo_client_start (const char *ip, int port) {
         struct sockaddr_in remote_addr;
         int addr_len = sizeof(remote_addr);
         plat_memset(buf, 0, sizeof(buf));
-        int len = recvfrom(s, buf, sizeof(buf) - 1, 0, (struct sockaddr_in *)&remote_addr, &addr_len);
+        int len = recv(s, buf, sizeof(buf) - 1, 0);
+        //int len = recvfrom(s, buf, sizeof(buf) - 1, 0, (struct sockaddr_in *)&remote_addr, &addr_len);
         if (len <= 0) {
             plat_printf("read error\n");
             goto end;

@@ -197,6 +197,7 @@ sock_t *udp_create(int family, int protocol) {
         .close = udp_close,
         .connect = udp_connect,
         .send = sock_send,
+        .recv = sock_recv,
     };
 
     udp_t *udp = mblock_alloc(&udp_mblock, -1);

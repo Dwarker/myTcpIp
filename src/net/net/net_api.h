@@ -38,5 +38,5 @@ const char *x_inet_ntop(int family, const char *addrptr, char *strptr, size_t le
 #define close(s)    x_close(s)
 #define connect(s, addr, addr_len)  x_connect(s, addr, addr_len)
 #define send(s, buf, len, flag)     x_send(s, buf, len, flag)
-
+#define recv(s, buf, len, flag)     x_recv(s, buf, len, flag)
 #endif
