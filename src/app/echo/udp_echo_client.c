@@ -29,8 +29,15 @@ int udp_echo_client_start (const char *ip, int port) {
         if (strncmp(buf, "quit", 4) == 0) {
             break;
         }
+        #if 0
         if (sendto(s, buf, plat_strlen(buf), 0, 
                 (const struct sockaddr *)&server_addr, sizeof(server_addr)) <= 0) {
+            plat_printf("send error\n");
+            goto end;
+        }
+        #endif
+
+        if (send(s, buf, plat_strlen(buf), 0) <= 0) {
             plat_printf("send error\n");
             goto end;
         }

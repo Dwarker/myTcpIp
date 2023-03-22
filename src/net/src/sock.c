@@ -198,6 +198,10 @@ net_err_t sock_sendto_req_in(struct _func_msg_t *msg) {
     return NET_ERR_OK;
 }
 
+net_err_t sock_send_req_in(struct _func_msg_t *msg) {
+    return NET_ERR_OK;
+}
+
 net_err_t sock_recvfrom_req_in(struct _func_msg_t *msg) {
     sock_req_t *req = (sock_req_t *)msg->param;
 
