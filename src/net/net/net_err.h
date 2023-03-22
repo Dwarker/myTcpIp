@@ -15,8 +15,9 @@ typedef enum net_err_t {
     NET_ERR_IO    = -9,
     NET_ERR_EXIST = -10,
     NET_ERR_NOT_SUPPORT = -11,
-    NET_ERR_BROKEN = 12,
-    NET_ERR_UNREACH = 13,
+    NET_ERR_BROKEN = -12,
+    NET_ERR_UNREACH = -13,
+    NET_ERR_BINDED = -14,
 }net_err_t;
 
 #endif

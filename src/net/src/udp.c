@@ -73,6 +73,48 @@ static net_err_t alloc_port(sock_t *sock) {
     return NET_ERR_NONE;
 }
 
+net_err_t udp_bind(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len) {
+    const struct x_sockaddr_in *addr_in = (const struct x_sockaddr_in *)addr;
+    
+    if (s->local_port != 0) {//因为ip地址可能不用设置,所以这里不需检查ip
+        dbg_error(DBG_UDP, "already binded.");
+        return NET_ERR_BINDED;
+    }
+
+    int port = x_ntohs(addr_in->sin_port);
+    ipaddr_t local_ip;
+    ipaddr_from_buf(&local_ip, (uint8_t *)addr_in->sin_addr.addr_array);
+
+    //遍历udp链表,是否已有该端口作为索引
+    nlist_node_t *node;
+    udp_t *udp = (udp_t *)0;
+    nlist_for_each(node, &udp_list) {
+        udp_t *u = (udp_t *)nlist_entry(node, sock_t, node);
+
+        //这里为什么要continue?
+        if ((sock_t *)u == s) {
+            continue;
+        }
+
+        //后半个判断,主要是允许不同的ip可以绑定到同一个端口上
+        if ((s->local_port == port) &&
+             (ipaddr_is_equal(&s->local_ip, local_ip))) {
+            udp = u;
+            break;
+        }
+    }
+
+    if (udp) {
+        dbg_error(DBG_UDP, "port already used!");
+        return NET_ERR_BINDED;
+    } else {
+        sock_bind(s, addr, addr_len);
+    }
+
+    display_udp_list();
+    return NET_ERR_OK;
+}
+
 static net_err_t udp_sendto (struct _sock_t *s, const void *buf, ssize_t len, int flags,
                         const struct x_sockaddr *dest, x_socklen_t dest_len, ssize_t *result_len) {
     ipaddr_t dest_ip;
@@ -198,6 +240,7 @@ sock_t *udp_create(int family, int protocol) {
         .connect = udp_connect,
         .send = sock_send,
         .recv = sock_recv,
+        .bind = udp_bind,
     };
 
     udp_t *udp = mblock_alloc(&udp_mblock, -1);

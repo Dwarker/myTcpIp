@@ -6,6 +6,7 @@
 #include "raw.h"
 #include "udp.h"
 #include "tools.h"
+#include "ipv4.h"
 
 #define SOCKET_MAX_NR   (RAW_MAX_NR)
 
@@ -412,5 +413,25 @@ net_err_t sock_connect(sock_t *sock, const struct x_sockaddr* addr, x_socklen_t 
     struct x_sockaddr_in *remote = (struct x_sockaddr_in *)addr;
     ipaddr_from_buf(&sock->remote_ip, remote->sin_addr.addr_array);
     sock->remote_port = x_ntohs(remote->sin_port);
+    return NET_ERR_OK;
+}
+
+net_err_t sock_bind(sock_t *sock, const struct x_sockaddr* addr, x_socklen_t len) {
+    ipaddr_t local_ip;
+    struct x_sockaddr_in *local = (struct x_sockaddr_in *)addr;
+    ipaddr_from_buf(&local_ip, local->sin_addr.addr_array);
+
+    if (!ipaddr_is_any(&local_ip)) {
+        rentry_t *rt = rt_find(&local_ip);
+        //这里的后半部分比较其实可以删掉,在rt_find中已经做了
+        if (!rt || (!ipaddr_is_equal(&rt->netif->ipaddr, &local_ip))) {
+            dbg_error(DBG_SOCKET, "addr error");
+            return NET_ERR_PARAM;
+        }
+    }
+
+    ipaddr_copy(&sock->local_ip, &local_ip);
+    sock->local_port = x_ntohs(local->sin_port);
+
     return NET_ERR_OK;
 }

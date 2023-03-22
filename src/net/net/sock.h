@@ -135,6 +135,7 @@ net_err_t sock_setsockopt_req_in(struct _func_msg_t *msg);
 net_err_t sock_close_req_in(struct _func_msg_t *msg);
 net_err_t sock_connect_req_in(struct _func_msg_t *msg);
 net_err_t sock_bind_req_in(struct _func_msg_t *msg);
+net_err_t sock_bind(sock_t *sock, const struct x_sockaddr* addr, x_socklen_t len);
 net_err_t sock_connect(sock_t *sock, const struct x_sockaddr* addr, x_socklen_t len);
 net_err_t sock_setopt(struct _sock_t *s, int level, int optname, const char* optval, int optlen);
 net_err_t sock_send(struct _sock_t *s, const void *buf, ssize_t len, int flags, ssize_t *result_len);

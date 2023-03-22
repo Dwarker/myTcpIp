@@ -17,7 +17,7 @@ void udp_echo_server(void *arg) {
     struct sockaddr_in server_addr;
     plat_memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");//INADDR_ANY;
     server_addr.sin_port = htons(server_port);
     if (bind(s, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         plat_printf("bind error\n");
