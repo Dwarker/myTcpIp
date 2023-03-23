@@ -9,13 +9,13 @@
 static net_err_t send_out(tcp_hdr_t *out, pktbuf_t *buf, ipaddr_t *dest, ipaddr_t *src) {
     out->sport = x_htons(out->sport);
     out->dport = x_htons(out->dport);
-    out->seq = x_htons(out->seq);
-    out->ack = x_htons(out->ack);
+    out->seq = x_htonl(out->seq);
+    out->ack = x_htonl(out->ack);
     out->win = x_htons(out->win);
     out->urgptr = x_htons(out->urgptr);
 
     out->checksum = 0;
-    out->checksum = checksum_peso(buf, (const ipaddr_t *)dest->a_addr, (const ipaddr_t *)src->a_addr, NET_PROTOCOL_TCP);
+    out->checksum = checksum_peso(buf, dest, src, NET_PROTOCOL_TCP);
 
     net_err_t err = ipv4_out(NET_PROTOCOL_TCP, dest, src, buf);
     if (err < 0) {
@@ -44,6 +44,24 @@ net_err_t tcp_send_reset(tcp_seg_t *seg) {
     tcp_set_hdr_size(out, sizeof(tcp_hdr_t));//设置头部大小字段
     //暂时设置为0
     out->win = out->urgptr = 0;
+
+    //数据发送过程中,突然出问题,发reset
+    if (in->f_ack) {
+        //这是对方希望的ack值,告诉对方我收到了
+        out->seq = in->ack;
+
+        //因为seq已经可以告诉对方我收到了,所以不需要设置ack
+        out->ack = 0;
+        out->f_ack = 0;
+    } else {
+        //三次握手,第一次握手被拒的情况
+        //因为对方没有ack值,所以我们不知道对方期待的seq值是多少,
+        //也就无法填seq值发给对方,所以我们只需填ack,告诉对方,
+        //你的syn包我收到了,但是seq的值我们直接填0
+        out->seq = 0;
+        out->ack = in->seq + seg->seq_len;//告诉对方你的syn包我收到了
+        out->f_ack = 1;
+    }
 
     return send_out(out, buf, &seg->remote_ip, &seg->local_ip);
 }

@@ -46,8 +46,8 @@ net_err_t tcp_in(pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
 
     tcp_hdr->sport = x_ntohs(tcp_hdr->sport);
     tcp_hdr->dport = x_ntohs(tcp_hdr->dport);
-    tcp_hdr->seq = x_ntohs(tcp_hdr->seq);
-    tcp_hdr->ack = x_ntohs(tcp_hdr->ack);
+    tcp_hdr->seq = x_ntohl(tcp_hdr->seq);
+    tcp_hdr->ack = x_ntohl(tcp_hdr->ack);
     tcp_hdr->win = x_ntohs(tcp_hdr->win);
     tcp_hdr->urgptr = x_ntohs(tcp_hdr->urgptr);
 
