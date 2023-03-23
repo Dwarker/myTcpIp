@@ -4,6 +4,7 @@
 #include "sock.h"
 #include "net_cfg.h"
 #include "pktbuf.h"
+#include "dbg.h"
 
 #pragma pack(1)
 typedef struct _tcp_hdr_t {
@@ -69,6 +70,16 @@ typedef struct _tcp_seg_t {
 typedef struct _tcp_t {
     sock_t base;
 }tcp_t;
+
+#if DBG_DISP_ENABLED(DBG_TCP)
+void tcp_show_info(char *msg, tcp_t *tcp);
+void tcp_show_pkt(char *msg, tcp_hdr_t *tcp_hdr, pktbuf_t *buf);
+void tcp_show_list(void);
+#else
+#define tcp_show_info(msg, tcp)
+#define tcp_show_pkt(msg, hdr, buf)
+#define tcp_show_list()
+#endif
 
 net_err_t tcp_init(void);
 sock_t *tcp_create(int family, int protocol);
