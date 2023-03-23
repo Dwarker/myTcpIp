@@ -6,8 +6,8 @@
 int udp_echo_client_start (const char *ip, int port) {
     plat_printf("udp echo client, ip: %s, port: %d\n", ip, port);
 
-    WSADATA wsdata;
-    WSAStartup(MAKEWORD(2, 2), &wsdata);
+    //WSADATA wsdata;
+    //WSAStartup(MAKEWORD(2, 2), &wsdata);
 
     int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s < 0) {

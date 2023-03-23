@@ -5,8 +5,8 @@
 static uint16_t server_port;
 
 void udp_echo_server(void *arg) {
-    WSADATA wsdata;
-    WSAStartup(MAKEWORD(2, 2), &wsdata);
+    //WSADATA wsdata;
+    //WSAStartup(MAKEWORD(2, 2), &wsdata);
 
     int s = socket(AF_INET, SOCK_DGRAM, 0);
     if (s < 0) {
