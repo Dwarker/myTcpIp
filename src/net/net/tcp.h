@@ -3,6 +3,7 @@
 
 #include "sock.h"
 #include "net_cfg.h"
+#include "pktbuf.h"
 
 #pragma pack(1)
 typedef struct _tcp_hdr_t {
@@ -55,6 +56,16 @@ typedef struct _tcp_pkt_t {
 
 #pragma pack()
 
+typedef struct _tcp_seg_t {
+    ipaddr_t local_ip;
+    ipaddr_t remote_ip;
+    tcp_hdr_t *hdr;
+    pktbuf_t *buf;
+    uint32_t data_len; //不包含tcp头部长度
+    uint32_t seq; //数据包的序列号
+    uint32_t seq_len;
+}tcp_seg_t;
+
 typedef struct _tcp_t {
     sock_t base;
 }tcp_t;
@@ -66,4 +77,7 @@ static inline int tcp_hdr_size(tcp_hdr_t *hdr) {
     return hdr->shdr * 4;
 }
 
+static inline void tcp_set_hdr_size(tcp_hdr_t *hdr, int size) {
+    hdr->shdr = size / 4;
+}
 #endif
