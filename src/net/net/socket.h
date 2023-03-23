@@ -17,6 +17,12 @@
 #undef SOCK_DGRAM
 #define SOCK_DGRAM   1
 
+#undef SOCK_STREAM
+#define SOCK_STREAM  2
+
+#undef IPPROTO_TCP
+#define IPPROTO_TCP     6
+
 #undef IPPROTO_ICMP
 #define IPPROTO_ICMP     1
 

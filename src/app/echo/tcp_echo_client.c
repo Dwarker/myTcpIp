@@ -1,14 +1,15 @@
 #include "tcp_echo_client.h"
 #include "sys_plat.h"
-#include <WinSock2.h>
+//#include <WinSock2.h>
+#include "net_api.h"
 
 int tcp_echo_client_start (const char *ip, int port) {
     plat_printf("tcp echo client, ip: %s, port: %d\n", ip, port);
 
-    WSADATA wsdata;
-    WSAStartup(MAKEWORD(2, 2), &wsdata);
+    //WSADATA wsdata;
+    //WSAStartup(MAKEWORD(2, 2), &wsdata);
 
-    SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
+    int s = socket(AF_INET, SOCK_STREAM, 0);
     if (s < 0) {
         plat_printf("tcp echo client: open socket error\n");
         goto end;
@@ -23,6 +24,13 @@ int tcp_echo_client_start (const char *ip, int port) {
         plat_printf("connect error\n");
         goto end;
     }
+
+#if 1
+    char sbuf[128];
+    fgets(sbuf, sizeof(sbuf), stdin);
+    close(s);
+    return 0;
+#endif
 
     char buf[128];
     plat_printf(">>");
@@ -41,11 +49,12 @@ int tcp_echo_client_start (const char *ip, int port) {
 
         plat_printf("%s\n>>", buf);
     }
-    
-    closesocket(s);
+    close(s);
+    //closesocket(s);
 end:
     if (s >= 0) {
-        closesocket(s);
+        //closesocket(s);
+        close(s);
     }
     return -1;
 }

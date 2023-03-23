@@ -8,5 +8,6 @@ typedef struct _tcp_t {
 }tcp_t;
 
 net_err_t tcp_init(void);
+sock_t *tcp_create(int family, int protocol);
 
 #endif

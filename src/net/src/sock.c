@@ -7,8 +7,9 @@
 #include "udp.h"
 #include "tools.h"
 #include "ipv4.h"
+#include "tcp.h"
 
-#define SOCKET_MAX_NR   (RAW_MAX_NR)
+#define SOCKET_MAX_NR   (RAW_MAX_NR + UDP_MAX_NR + TCP_MAX_NR)
 
 static x_socket_t socket_tbl[SOCKET_MAX_NR];
 
@@ -137,6 +138,7 @@ net_err_t sock_create_req_in(struct _func_msg_t *msg) {
     }sock_tbl[] = {
         [SOCK_RAW] = {.protocol = IPPROTO_ICMP, .create = raw_create,},
         [SOCK_DGRAM] = {.protocol = IPPROTO_UDP, .create = udp_create,},
+        [SOCK_STREAM] = {.protocol = IPPROTO_TCP, .create = tcp_create,},
     };
     sock_req_t *req = (sock_req_t *)msg->param;
     sock_create_t *param = &req->create;
@@ -149,7 +151,7 @@ net_err_t sock_create_req_in(struct _func_msg_t *msg) {
 
     //越界检查
     if ((param->type < 0)
-        || (param->type >= sizeof(socket_tbl) / sizeof(socket_tbl[0])))
+        || (param->type >= sizeof(sock_tbl) / sizeof(sock_tbl[0])))
     {
         dbg_error(DBG_SOCKET, "create sock failed.");
         socket_free(s);
