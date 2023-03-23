@@ -8,6 +8,7 @@
 #include "timer.h"
 #include "raw.h"
 #include "udp.h"
+#include "tcp_in.h"
 
 static uint16_t packet_id = 0;
 
@@ -421,7 +422,14 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
         }
         return NET_ERR_OK;
     case NET_PROTOCOL_TCP:
-        break;
+        //移除IP包头
+        pktbuf_remove_header(buf, ipv4_hdr_size(pkt));
+        err = tcp_in(buf, src_ip, dest_ip);
+        if (err < 0) {
+            dbg_warning(DBG_IP, "tcp in error:%d\n", err);
+            return err;
+        }
+        return NET_ERR_OK;
     default:
         //实际上这个默认分支不会执行到
         dbg_warning(DBG_IP, "unknow protocol");
