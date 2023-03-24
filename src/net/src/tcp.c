@@ -123,7 +123,9 @@ net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_sockle
         ipaddr_copy(&s->local_ip, &rt->netif->ipaddr);
     }
 
-    return NET_ERR_OK;
+    //client发送syn包后,需要等待,但是这里是工作线程,相当于内核,
+    //不能让内核卡死,所以范围WAIT值,让应用程序进行等待
+    return NET_ERR_NEED_WAIT;
 }
 
 net_err_t tcp_close(struct _sock_t *s) {
@@ -151,7 +153,21 @@ static tcp_t *tcp_alloc(int wait, int family, int protocol) {
         return (tcp_t *)0;
     }
 
+    if (sock_wait_init(&tcp->conn.wait) < 0) {
+        dbg_error(DBG_TCP, "create conn.wait failed.");
+        goto alloc_failed;
+    }
+
+    tcp->base.conn_wait = &tcp->conn.wait;
+
     return tcp;
+
+alloc_failed:
+    if (tcp->base.conn_wait) {
+        sock_wait_destory(tcp->base.conn_wait);
+    }
+    mblock_free(&tcp_mblock, tcp);
+    return (tcp_t *)0;
 }
 
 static void tcp_insert(tcp_t *tcp) {

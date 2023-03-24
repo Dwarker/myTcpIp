@@ -69,6 +69,13 @@ typedef struct _tcp_seg_t {
 
 typedef struct _tcp_t {
     sock_t base;
+
+    //用于三次握手等待
+    struct
+    {
+        sock_wait_t wait;
+    }conn;
+    
 }tcp_t;
 
 #if DBG_DISP_ENABLED(DBG_TCP)

@@ -221,6 +221,11 @@ int x_close(int s) {
         return -1;
     }
 
+    //tcp四次挥手也需要等待
+    if (req.wait) {
+        sock_wait_enter(req.wait, req.wait_tmo);
+    }
+
     return 0;
 }
 
@@ -244,6 +249,12 @@ int x_connect(int s, const struct x_sockaddr *addr, x_socklen_t len) {
     net_err_t err = exmsg_func_exec(sock_connect_req_in, &req);
     if (err < 0) {
         dbg_error(DBG_SOCKET, "conn failed.");
+        return -1;
+    }
+
+    //udp不会在这里等待,所以要加req.wait判断下,因为udp没有分配这个结构
+    if (req.wait && ((err == sock_wait_enter(req.wait, req.wait_tmo)) < 0)) {
+        dbg_error(DBG_SOCKET, "connect failed.");
         return -1;
     }
 

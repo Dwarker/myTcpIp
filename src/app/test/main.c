@@ -363,7 +363,7 @@ int main (void) {
 
 	//udp_echo_server_start(2000);
 	//udp_echo_client_start("127.0.0.1", 2000);
-	//tcp_echo_client_start(friend0_ip, 1000);
+	tcp_echo_client_start(friend0_ip, 1000);
 
 	//请求协议栈执行某函数,这里是请求执行test_func
 	int arg = 0x1234;
