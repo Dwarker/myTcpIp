@@ -1,6 +1,9 @@
 #include "tcp.h"
 #include "dbg.h"
 #include "mblock.h"
+#include "socket.h"
+#include "protocol.h"
+#include "tools.h"
 
 static tcp_t tcp_tbl[TCP_MAX_NR];
 static mblock_t tcp_mblock;
@@ -64,7 +67,62 @@ static tcp_t *tcp_get_free(int wait) {
     return tcp;
 }
 
+int tcp_alloc_port(void) {
+    static int search_idx = NET_PORT_DYN_START;
+    for (int i = NET_PORT_DYN_START; i < NET_PORT_DYN_END; i++) {
+        nlist_node_t *node;
+        nlist_for_each(node, &tcp_list) {
+            sock_t *sock = nlist_entry(node, sock_t, node);
+            //被使用了
+            if (sock->local_port == search_idx) {
+                break;
+            }
+        }
+
+        if (++search_idx >= NET_PORT_DYN_END) {
+            search_idx = NET_PORT_DYN_START;
+        }
+
+        //没有被使用的情况下,node应该为空
+        if (!node) {
+            return search_idx;
+        }
+    }
+
+    return -1;
+}
+
 net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len) {
+    const struct x_sockaddr_in *addr_in = (const struct x_sockaddr_in *)addr;
+
+    ipaddr_from_buf(&s->remote_ip, (uint8_t *)&addr_in->sin_addr.s_addr);
+    s->remote_port = x_ntohs(addr_in->sin_port);
+
+    //本地的ip和port,客户端也可以用bind进行绑定,但是一般不用
+    if (s->local_port == NET_PORT_EMPTY) {
+        int port = tcp_alloc_port();
+        if (port == -1) {
+            dbg_error(DBG_TCP, "alloc port failed.");
+            return NET_ERR_NONE;
+        }
+
+        s->local_port = port;
+    }
+
+    //这里ip地址不设置的话,实际上会在ipv4_out里面会选择一个合适的ip
+    //也可以在这里进行选择:根据对方的IP查路由表,找到下一跳的地址
+    //但是也有个问题,如果之前选择的网卡被禁用或者换了一个ip,
+    //那么下一次发送的时候,就会发送不了
+    if (ipaddr_is_any(&s->local_ip)) {
+        rentry_t *rt = rt_find(&s->remote_ip);
+        if (rt == (rentry_t *)0) {
+            dbg_error(DBG_TCP, "no route to host.");
+            return NET_ERR_UNREACH;
+        }
+
+        ipaddr_copy(&s->local_ip, &rt->netif->ipaddr);
+    }
+
     return NET_ERR_OK;
 }
 
