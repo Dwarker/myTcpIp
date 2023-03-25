@@ -255,14 +255,15 @@ tcp_t *tcp_find(ipaddr_t *local_ip, uint16_t local_port, ipaddr_t *remote_ip, ui
 
     nlist_for_each(node, &tcp_list) {
         sock_t *s = nlist_entry(node, sock_t, node);
-
+        
         //local_ip有可能为空
-        if (!ipaddr_is_any(&s->local_ip)
-            &&ipaddr_is_equal(&s->local_ip, local_ip)
-            && (s->local_port == local_port)
-            && ipaddr_is_equal(&s->remote_ip, remote_ip)
-            && (s->remote_port == remote_port)) {
-            return (tcp_t *)s;
+        if ((s->local_port == local_port) && ipaddr_is_equal(&s->remote_ip, remote_ip) && (s->remote_port == remote_port)) {
+            if (!ipaddr_is_any(&s->local_ip)) {
+                return (tcp_t *)s;
+            } else if (ipaddr_is_equal(&s->local_ip, local_ip)) {
+                return (tcp_t *)s;
+            }
+            
         }
     }
 
