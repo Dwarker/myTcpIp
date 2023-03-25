@@ -75,6 +75,21 @@ typedef struct _tcp_t {
     {
         sock_wait_t wait;
     }conn;
+
+    //用于数据发送
+    struct {
+        uint32_t una; //unack 已发送,但是还未被对方确认接收的开始序号
+        uint32_t nxt; //待发送的起始序号
+        uint32_t iss; //初始序号
+
+        sock_wait_t wait;//用于等待对方确认
+    }snd;
+
+    struct {
+        uint32_t nxt; //希望接收到的序号,即已接收的最后一个字符后面的序号
+        uint32_t iss; //初始序列号
+        sock_wait_t wait; //用于等待对方发送数据过来
+    }rcv;
     
 }tcp_t;
 

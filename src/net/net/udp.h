@@ -23,6 +23,7 @@ typedef struct _udp_pkt_t {
 }udp_pkt_t;
 #pragma pack()
 
+//udp发送是不需要等待的,如果缓存区满了,则数据丢失,接收需要等待,因为可能数据还没到
 typedef struct _udp_t {
     sock_t base;
 

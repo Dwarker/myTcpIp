@@ -92,7 +92,23 @@ int tcp_alloc_port(void) {
     return -1;
 }
 
+static uint32_t tcp_get_iss(void) {
+    static uint32_t seq = 0;
+
+    return ++seq;
+}
+
+static net_err_t tcp_init_connect(tcp_t *tcp) {
+    tcp->snd.iss = tcp_get_iss();
+    tcp->snd.una = tcp->snd.nxt = tcp->snd.iss;
+
+    //还没接收到服务端的数据,所以直接填0
+    tcp->rcv.nxt = 0;
+    return NET_ERR_OK;
+}
+
 net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len) {
+    tcp_t *tcp = (tcp_t *)s;
     const struct x_sockaddr_in *addr_in = (const struct x_sockaddr_in *)addr;
 
     ipaddr_from_buf(&s->remote_ip, (uint8_t *)&addr_in->sin_addr.s_addr);
@@ -121,6 +137,12 @@ net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_sockle
         }
 
         ipaddr_copy(&s->local_ip, &rt->netif->ipaddr);
+    }
+
+    net_err_t err = NET_ERR_OK;
+    if (tcp_init_connect(tcp) < 0) {
+        dbg_error(DBG_TCP, "init conn failed.");
+        return err;
     }
 
     //client发送syn包后,需要等待,但是这里是工作线程,相当于内核,
@@ -157,14 +179,31 @@ static tcp_t *tcp_alloc(int wait, int family, int protocol) {
         dbg_error(DBG_TCP, "create conn.wait failed.");
         goto alloc_failed;
     }
-
     tcp->base.conn_wait = &tcp->conn.wait;
+
+    if (sock_wait_init(&tcp->snd.wait) < 0) {
+        dbg_error(DBG_TCP, "create snd.wait failed.");
+        goto alloc_failed;
+    }
+    tcp->base.snd_wait = &tcp->snd.wait;
+
+    if (sock_wait_init(&tcp->rcv.wait) < 0) {
+        dbg_error(DBG_TCP, "create rcv.wait failed.");
+        goto alloc_failed;
+    }
+    tcp->base.rcv_wait = &tcp->rcv.wait;
 
     return tcp;
 
 alloc_failed:
     if (tcp->base.conn_wait) {
         sock_wait_destory(tcp->base.conn_wait);
+    }
+    if (tcp->base.snd_wait) {
+        sock_wait_destory(tcp->base.snd_wait);
+    }
+    if (tcp->base.rcv_wait) {
+        sock_wait_destory(tcp->base.rcv_wait);
     }
     mblock_free(&tcp_mblock, tcp);
     return (tcp_t *)0;
