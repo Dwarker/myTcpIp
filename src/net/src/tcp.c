@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "tools.h"
 #include "tcp_out.h"
+#include "tcp_state.h"
 
 static tcp_t tcp_tbl[TCP_MAX_NR];
 static mblock_t tcp_mblock;
@@ -117,6 +118,11 @@ net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_sockle
     tcp_t *tcp = (tcp_t *)s;
     const struct x_sockaddr_in *addr_in = (const struct x_sockaddr_in *)addr;
 
+    if (tcp->state != TCP_STATE_CLOSED) {
+        dbg_error(DBG_TCP, "tcp is not closed.");
+        return NET_ERR_STATE;
+    }
+
     ipaddr_from_buf(&s->remote_ip, (uint8_t *)&addr_in->sin_addr.s_addr);
     s->remote_port = x_ntohs(addr_in->sin_port);
 
@@ -156,6 +162,9 @@ net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_sockle
         return err;
     }
 
+    //发送syn包后,修改tcp状态
+    tcp_set_state(tcp, TCP_STATE_SYN_SENT);
+
     //client发送syn包后,需要等待,但是这里是工作线程,相当于内核,
     //不能让内核卡死,所以范围WAIT值,让应用程序进行等待
     return NET_ERR_NEED_WAIT;
@@ -176,6 +185,8 @@ static tcp_t *tcp_alloc(int wait, int family, int protocol) {
         dbg_error(DBG_TCP, "no tcp sock.");
         return (tcp_t *)0;
     }
+
+    tcp->state = TCP_STATE_CLOSED;
 
     plat_memset(tcp, 0, sizeof(tcp_t));
 
