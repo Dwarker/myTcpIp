@@ -70,6 +70,10 @@ typedef struct _tcp_seg_t {
 typedef struct _tcp_t {
     sock_t base;
 
+    struct {
+        uint32_t syn_out : 1;   //1 syn已经发送, 0 收到syn的ack回包
+    }flags;
+
     //用于三次握手等待
     struct
     {

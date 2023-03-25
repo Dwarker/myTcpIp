@@ -67,3 +67,36 @@ net_err_t tcp_send_reset(tcp_seg_t *seg) {
 
     return send_out(out, buf, &seg->remote_ip, &seg->local_ip);
 }
+
+net_err_t tcp_transmit(tcp_t *tcp) {
+    pktbuf_t *buf = pktbuf_alloc(sizeof(tcp_hdr_t));
+    if (!buf) {
+        dbg_error(DBG_TCP, "no buffer.");
+        return NET_ERR_OK;
+    }
+
+    tcp_hdr_t *hdr = (tcp_hdr_t *)pktbuf_data(buf);
+    plat_memset(hdr, 0, sizeof(tcp_hdr_t));
+
+    hdr->sport = tcp->base.local_port;
+    hdr->dport = tcp->base.remote_port;
+    hdr->seq = tcp->snd.nxt; //nxt值已初始化为0
+    hdr->ack = tcp->rcv.nxt; //告诉对方,我方希望接收的序列号是0(也就是还没收到数据)
+    hdr->flag = 0;
+    hdr->f_syn = tcp->flags.syn_out;
+    hdr->f_ack = 0;
+    hdr->win = 1024; //暂时填这个
+    hdr->urgptr = 0; //用不到
+    tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
+
+    tcp->snd.nxt += hdr->f_syn + hdr->f_fin;//调整待发送的序号
+
+    return send_out(hdr, buf, &tcp->base.remote_ip, &tcp->base.local_ip);
+}
+
+net_err_t tcp_send_syn(tcp_t *tcp) {
+    tcp->flags.syn_out = 1;
+    tcp_transmit(tcp);
+
+    return NET_ERR_OK;
+}
