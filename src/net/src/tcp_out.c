@@ -84,7 +84,10 @@ net_err_t tcp_transmit(tcp_t *tcp) {
     hdr->ack = tcp->rcv.nxt; //告诉对方,我方希望接收的序列号是0(也就是还没收到数据)
     hdr->flag = 0;
     hdr->f_syn = tcp->flags.syn_out;
-    hdr->f_ack = 0;
+    //是否已经收到对方的报文(如三次握手发送syn的时候,这里为0,
+    //此时hdr->ack这个值也是无效的,是0
+    //收到对方syn+ack后,tcp->flags.irs_valid被置为1,那么这里的f_ack的值也就为1
+    hdr->f_ack = tcp->flags.irs_valid;
     hdr->win = 1024; //暂时填这个
     hdr->urgptr = 0; //用不到
     tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
@@ -97,6 +100,19 @@ net_err_t tcp_transmit(tcp_t *tcp) {
 net_err_t tcp_send_syn(tcp_t *tcp) {
     tcp->flags.syn_out = 1;
     tcp_transmit(tcp);
+
+    return NET_ERR_OK;
+}
+
+net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
+    tcp_hdr_t *tcp_hdr = seg->hdr;
+
+    if (tcp->flags.syn_out) {
+        //下一个待确认的序列号,因为是争对第一次握手syn的回包处理,
+        //所以下一个已发送,待确认的数据包就是第一个字节的序列号,加1即可
+        tcp->snd.una++;
+        tcp->flags.syn_out = 0;//清零,表示该包不需要做重传了
+    }
 
     return NET_ERR_OK;
 }

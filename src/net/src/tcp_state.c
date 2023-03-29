@@ -60,6 +60,22 @@ net_err_t tcp_syn_sent_in(tcp_t *tcp, tcp_seg_t *seg) {
         return tcp_abort(tcp, NET_ERR_RESET);
     }
 
+    //正常收到对方发送的syn和ack
+    if (tcp_hdr->f_syn) {
+        //记录对方的初始序列号, 用处?
+        tcp->rcv.iss = tcp_hdr->seq;
+        //期望对方下次发过来的第一个字节的序列号,接收到数据时做检查
+        tcp->rcv.nxt = tcp_hdr->seq + 1;
+        //作用见tcp_transmit
+        tcp->flags.irs_valid = 1;
+
+        //如果当前值为0,则说明客户端端和服务端同时发了syn包,因为收到的包ack为0,即第一次握手
+        if (tcp_hdr->f_ack) {
+            tcp_ack_process(tcp, seg);
+        } 
+
+    }
+
     return NET_ERR_OK;
 }
 net_err_t tcp_syn_recvd_in(tcp_t *tcp, tcp_seg_t *seg) {

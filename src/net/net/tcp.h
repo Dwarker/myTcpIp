@@ -86,7 +86,8 @@ typedef struct _tcp_t {
     sock_t base;
 
     struct {
-        uint32_t syn_out : 1;   //1 syn已经发送, 0 收到syn的ack回包
+        uint32_t syn_out : 1;   //1 syn已经发送, 0 收到syn的ack回包 (就是重传作用)
+        uint32_t irs_valid : 1; //收到对方的syn包(包含了初始序列号) 表明收到了对方的报文
     }flags;
 
     tcp_state_t state;
