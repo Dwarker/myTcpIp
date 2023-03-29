@@ -74,11 +74,20 @@ net_err_t tcp_syn_sent_in(tcp_t *tcp, tcp_seg_t *seg) {
             tcp_ack_process(tcp, seg);
         } 
 
-        //第三次握手
-        tcp_send_ack(tcp, seg);
-        //通知应用程序,三次握手已经完成,链接建立,并改变链接状态
-        tcp_set_state(tcp, TCP_STATE_ESTABLISHED);
-        sock_wakeup(&tcp->base, SOCK_WAIT_CONN, NET_ERR_OK);
+        if (tcp_hdr->f_ack) {
+            //第三次握手
+            tcp_send_ack(tcp, seg);
+            //通知应用程序,三次握手已经完成,链接建立,并改变链接状态
+            tcp_set_state(tcp, TCP_STATE_ESTABLISHED);
+            sock_wakeup(&tcp->base, SOCK_WAIT_CONN, NET_ERR_OK);
+        } else {
+            //四次握手非常难测试,故暂时未测
+            //收到syn包的回包时,发现回包位携带ack,即ack为0,
+            //那么我方发送syn包的同时,对方也发syn包了,此时走四次握手
+            tcp_set_state(tcp, TCP_STATE_SYN_RECVD);
+            tcp_send_syn(tcp);
+        }
+        
     }
 
     return NET_ERR_OK;
