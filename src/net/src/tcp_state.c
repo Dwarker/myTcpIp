@@ -74,6 +74,11 @@ net_err_t tcp_syn_sent_in(tcp_t *tcp, tcp_seg_t *seg) {
             tcp_ack_process(tcp, seg);
         } 
 
+        //第三次握手
+        tcp_send_ack(tcp, seg);
+        //通知应用程序,三次握手已经完成,链接建立,并改变链接状态
+        tcp_set_state(tcp, TCP_STATE_ESTABLISHED);
+        sock_wakeup(&tcp->base, SOCK_WAIT_CONN, NET_ERR_OK);
     }
 
     return NET_ERR_OK;

@@ -116,3 +116,29 @@ net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
 
     return NET_ERR_OK;
 }
+
+//这里不用tcp_transmit接口进行发送,
+//是因为第三次握手回复功能单一独立,
+//而tcp_transmit较复杂
+net_err_t tcp_send_ack(tcp_t *tcp, tcp_seg_t *seg) {
+    pktbuf_t *buf = pktbuf_alloc(sizeof(tcp_hdr_t));
+    if (!buf) {
+        dbg_error(DBG_TCP, "no buffer.");
+        return NET_ERR_NONE;
+    }
+
+    tcp_hdr_t *hdr = (tcp_hdr_t *)pktbuf_data(buf);
+    plat_memset(hdr, 0, sizeof(tcp_hdr_t));
+
+    hdr->sport = tcp->base.local_port;
+    hdr->dport = tcp->base.remote_port;
+    hdr->seq = tcp->snd.nxt; //nxt值已初始化为0
+    hdr->ack = tcp->rcv.nxt; //告诉对方,我方希望接收的序列号是0(也就是还没收到数据)
+    hdr->flag = 0;
+    hdr->f_ack = 1;//表示我收到你们的包了
+    hdr->win = 1024; //暂时填这个
+    hdr->urgptr = 0; //用不到
+    tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
+
+    return send_out(hdr, buf, &tcp->base.remote_ip, &tcp->base.local_ip);
+}
