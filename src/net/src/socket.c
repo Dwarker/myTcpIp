@@ -253,7 +253,7 @@ int x_connect(int s, const struct x_sockaddr *addr, x_socklen_t len) {
     }
 
     //udp不会在这里等待,所以要加req.wait判断下,因为udp没有分配这个结构
-    if (req.wait && ((err == sock_wait_enter(req.wait, req.wait_tmo)) < 0)) {
+    if (req.wait && ((err = sock_wait_enter(req.wait, req.wait_tmo)) < 0)) {
         dbg_error(DBG_SOCKET, "connect failed.");
         return -1;
     }

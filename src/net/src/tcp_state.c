@@ -1,4 +1,5 @@
 #include "tcp_state.h"
+#include "tcp_out.h"
 
 const char *tcp_state_name(tcp_state_t state) {
     static const char* state_name[] = {
@@ -35,6 +36,30 @@ net_err_t tcp_listen_in(tcp_t *tcp, tcp_seg_t *seg) {
     return NET_ERR_OK;
 }
 net_err_t tcp_syn_sent_in(tcp_t *tcp, tcp_seg_t *seg) {
+    //收到对方对syn的回复
+    tcp_hdr_t *tcp_hdr = seg->hdr;
+
+    if (tcp_hdr->f_ack) {
+        //检查返回的ack值是否在合理范围,也就是数据待确认范围
+        if ((tcp_hdr->ack - tcp->snd.iss <= 0
+            || (tcp_hdr->ack - tcp->snd.nxt > 0))) {
+            dbg_warning(DBG_TCP, "%s: ack error", tcp_state_name(tcp->state));
+            return tcp_send_reset(seg);
+        }
+    }
+
+    //可能是争对syn的复位应答
+    if (tcp_hdr->f_rst) {
+        //这里如果f_ack是0,说明没有通过上一个if的检查,
+        //也就是说该reset报文不是争对此syn的reset报文
+        if (!tcp_hdr->f_ack) {
+            return NET_ERR_OK; //这里为什么是返回OK?
+        }
+
+        //是争对此次syn的reset报文,则终止此次链接,并通知上层应用
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
     return NET_ERR_OK;
 }
 net_err_t tcp_syn_recvd_in(tcp_t *tcp, tcp_seg_t *seg) {
