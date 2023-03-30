@@ -208,6 +208,12 @@ net_err_t tcp_close(struct _sock_t *s) {
         //这里我方发送了fin包后,还需要等对方发送最后一个确认报文,
         //所以这里需要等待
         return NET_ERR_NEED_WAIT;
+    case TCP_STATE_ESTABLISHED:
+        //主动关闭
+        tcp_send_fin(tcp);
+        tcp_set_state(tcp, TCP_STATE_FIN_WAIT_1);
+        //等待对方回复,所以返回等待,让应用程序等待
+        return NET_ERR_NEED_WAIT;
     default:
         //其他状态后续处理
         dbg_error(DBG_TCP, "tcp state error.");

@@ -128,10 +128,80 @@ net_err_t tcp_established_in(tcp_t *tcp, tcp_seg_t *seg) {
 
     return NET_ERR_OK;
 }
+
+void tcp_time_wait(tcp_t *tcp) {
+    //后面补充其他代码
+    tcp_set_state(tcp, TCP_STATE_TIME_WAIT);
+}
+
 net_err_t tcp_fin_wait_1_in(tcp_t *tcp, tcp_seg_t *seg) {
+    tcp_hdr_t *tcp_hdr = seg->hdr;
+
+    //如果对方应用程序因为某种原因退出
+    if (tcp_hdr->f_rst) {
+        dbg_warning(DBG_TCP, "recv a rst");
+        //这里最好不要给对方发rst报文,因为对方收到rst报文后,也可能再回rst报文,
+        //这样一直发,所以直接终止连接
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
+    if (tcp_hdr->f_syn) {
+        dbg_warning(DBG_TCP, "recv a syn");
+        //此时直接回复对方reset,让对方关闭
+        tcp_send_reset(seg);
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
+    if (tcp_ack_process(tcp, seg) < 0) {
+        dbg_warning(DBG_TCP, "ack process failed.");
+        return NET_ERR_UNREACH;
+    }
+
+    tcp_data_in(tcp, seg);
+
+    //我方发送fin后,收到对方的ack后(即f_fin不为1),则表明我方的发往对方
+    //的通路已关闭,同时切换状态,但是如果f_fin为1,说明对方发了fin,也发了ack
+    if (tcp_hdr->f_fin) {
+        //需要回复对方ack,这个在tcp_data_in已经回复了
+        tcp_time_wait(tcp);
+    } else {
+        tcp_set_state(tcp, TCP_STATE_FIN_WAIT_2);
+    }
+
     return NET_ERR_OK;
 }
+
 net_err_t tcp_fin_wait_2_in(tcp_t *tcp, tcp_seg_t *seg) {
+    tcp_hdr_t *tcp_hdr = seg->hdr;
+
+    //如果对方应用程序因为某种原因退出
+    if (tcp_hdr->f_rst) {
+        dbg_warning(DBG_TCP, "recv a rst");
+        //这里最好不要给对方发rst报文,因为对方收到rst报文后,也可能再回rst报文,
+        //这样一直发,所以直接终止连接
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
+    if (tcp_hdr->f_syn) {
+        dbg_warning(DBG_TCP, "recv a syn");
+        //此时直接回复对方reset,让对方关闭
+        tcp_send_reset(seg);
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
+    if (tcp_ack_process(tcp, seg) < 0) {
+        dbg_warning(DBG_TCP, "ack process failed.");
+        return NET_ERR_UNREACH;
+    }
+
+    tcp_data_in(tcp, seg);
+
+    //我方发送fin后,走到这里,说明对方先发的ack,再发送的fin
+    if (tcp_hdr->f_fin) {
+        //需要回复对方ack,这个在tcp_data_in已经回复了
+        tcp_time_wait(tcp);
+    }
+
     return NET_ERR_OK;
 }
 net_err_t tcp_closing_in(tcp_t *tcp, tcp_seg_t *seg) {
