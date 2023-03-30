@@ -144,5 +144,28 @@ net_err_t tcp_close_wait_in(tcp_t *tcp, tcp_seg_t *seg) {
     return NET_ERR_OK;
 }
 net_err_t tcp_last_ack_in(tcp_t *tcp, tcp_seg_t *seg) {
-    return NET_ERR_OK;
+    //四次挥手的最后一个ack的处理
+    tcp_hdr_t *tcp_hdr = seg->hdr;
+
+     //如果对方应用程序因为某种原因退出
+    if (tcp_hdr->f_rst) {
+        dbg_warning(DBG_TCP, "recv a rst");
+        //这里最好不要给对方发rst报文,因为对方收到rst报文后,也可能再回rst报文,
+        //这样一直发,所以直接终止连接
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
+    if (tcp_hdr->f_syn) {
+        dbg_warning(DBG_TCP, "recv a syn");
+        //此时直接回复对方reset,让对方关闭
+        tcp_send_reset(seg);
+        return tcp_abort(tcp, NET_ERR_RESET);
+    }
+
+    if (tcp_ack_process(tcp, seg) < 0) {
+        dbg_warning(DBG_TCP, "ack process failed.");
+        return NET_ERR_UNREACH;
+    }
+
+    return tcp_abort(tcp, NET_ERR_CLOSE);
 }

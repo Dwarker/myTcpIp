@@ -226,6 +226,8 @@ int x_close(int s) {
         sock_wait_enter(req.wait, req.wait_tmo);
     }
 
+    //todo: 资源释放
+
     return 0;
 }
 
