@@ -171,7 +171,48 @@ net_err_t tcp_connect(struct _sock_t *s, const struct x_sockaddr *addr, x_sockle
     return NET_ERR_NEED_WAIT;
 }
 
+void tcp_free(tcp_t *tcp) {
+    //销毁等待结构
+    sock_wait_destory(&tcp->conn.wait);
+    sock_wait_destory(&tcp->snd.wait);
+    sock_wait_destory(&tcp->rcv.wait);
+
+    tcp->state = TCP_STATE_FREE;
+    nlist_remove(&tcp_list, &tcp->base.node);
+    mblock_free(&tcp_mblock, tcp);
+}
+
 net_err_t tcp_close(struct _sock_t *s) {
+    tcp_t *tcp = (tcp_t *)s;
+
+    switch (tcp->state)
+    {
+    case TCP_STATE_CLOSED:
+        //已经关闭的状态下,再次发送fin,保险起见再尝试释放一遍
+        dbg_info(DBG_TCP, "tcp already closed.");
+        tcp_free(tcp);
+        break;
+    //处于三次握手或者四次握手的情况
+    //即我方发送了syn包后,又立马关闭了
+    case TCP_STATE_SYN_SENT:
+    case TCP_STATE_SYN_RECVD:
+        //如果当前有应用程序在等待,则通知关闭连接
+        tcp_abort(tcp, NET_ERR_CLOSE);
+        tcp_free(tcp);
+        break;
+    case TCP_STATE_CLOSE_WAIT:
+        //正常情况下,对方主动关闭,然后我方再发送fin包关闭的形态
+        tcp_send_fin(tcp);
+        tcp_set_state(tcp, TCP_STATE_LAST_ACK);
+
+        //这里我方发送了fin包后,还需要等对方发送最后一个确认报文,
+        //所以这里需要等待
+        return NET_ERR_NEED_WAIT;
+    default:
+        //其他状态后续处理
+        dbg_error(DBG_TCP, "tcp state error.");
+        return NET_ERR_STATE;
+    }
     return NET_ERR_OK;
 }
 
@@ -187,9 +228,9 @@ static tcp_t *tcp_alloc(int wait, int family, int protocol) {
         return (tcp_t *)0;
     }
 
-    tcp->state = TCP_STATE_CLOSED;
-
     plat_memset(tcp, 0, sizeof(tcp_t));
+
+    tcp->state = TCP_STATE_CLOSED;
 
     net_err_t err = sock_init((sock_t *)tcp, family, protocol, &tcp_ops);
     if (err < 0) {

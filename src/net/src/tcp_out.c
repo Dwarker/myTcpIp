@@ -88,6 +88,7 @@ net_err_t tcp_transmit(tcp_t *tcp) {
     //此时hdr->ack这个值也是无效的,是0
     //收到对方syn+ack后,tcp->flags.irs_valid被置为1,那么这里的f_ack的值也就为1
     hdr->f_ack = tcp->flags.irs_valid;
+    hdr->f_fin = tcp->flags.fin_out; //tcp_send_fin中设置,表示这是个fin包
     hdr->win = 1024; //暂时填这个
     hdr->urgptr = 0; //用不到
     tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
@@ -106,7 +107,8 @@ net_err_t tcp_send_syn(tcp_t *tcp) {
 
 net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
     tcp_hdr_t *tcp_hdr = seg->hdr;
-
+    
+    //服务端发送fin的时候syn_out这个值是0,因为前面的数据都已经被接收了
     if (tcp->flags.syn_out) {
         //下一个待确认的序列号,因为是争对第一次握手syn的回包处理,
         //所以下一个已发送,待确认的数据包就是第一个字节的序列号,加1即可
@@ -141,4 +143,10 @@ net_err_t tcp_send_ack(tcp_t *tcp, tcp_seg_t *seg) {
     tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
 
     return send_out(hdr, buf, &tcp->base.remote_ip, &tcp->base.local_ip);
+}
+
+net_err_t tcp_send_fin(tcp_t *tcp) {
+    tcp->flags.fin_out = 1;
+    tcp_transmit(tcp);
+    return NET_ERR_OK;
 }

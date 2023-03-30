@@ -68,7 +68,8 @@ typedef struct _tcp_seg_t {
 }tcp_seg_t;
 
 typedef enum _tcp_state_t {
-    TCP_STATE_CLOSED = 0,
+    TCP_STATE_FREE = 0,
+    TCP_STATE_CLOSED,
     TCP_STATE_LISTEN,
     TCP_STATE_SYN_SENT,
     TCP_STATE_SYN_RECVD,
@@ -87,6 +88,7 @@ typedef struct _tcp_t {
 
     struct {
         uint32_t syn_out : 1;   //1 syn已经发送, 0 收到syn的ack回包 (就是重传作用)
+        uint32_t fin_out : 1;
         uint32_t irs_valid : 1; //收到对方的syn包(包含了初始序列号) 表明收到了对方的报文
     }flags;
 
