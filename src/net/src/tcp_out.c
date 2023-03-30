@@ -116,6 +116,11 @@ net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
         tcp->flags.syn_out = 0;//清零,表示该包不需要做重传了
     }
 
+    //用于两边同时关闭的处理,还没搞明白?
+    if (tcp->flags.fin_out && (tcp_hdr->ack - tcp->snd.una > 0)) {
+        tcp->flags.fin_out = 0;
+    }
+
     return NET_ERR_OK;
 }
 
