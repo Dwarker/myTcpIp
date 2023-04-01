@@ -255,6 +255,8 @@ static net_err_t tcp_send(struct _sock_t *s, const void *buf, ssize_t len, int f
         return NET_ERR_NEED_WAIT;
     } else {
         *result_len = size;
+        //发送tcp数据
+        tcp_transmit(tcp);
         return NET_ERR_OK;
     }
 }

@@ -68,6 +68,43 @@ net_err_t tcp_send_reset(tcp_seg_t *seg) {
     return send_out(out, buf, &seg->remote_ip, &seg->local_ip);
 }
 
+static int copy_send_data(tcp_t *tcp, pktbuf_t *buf, int doff, int dlen) {
+    if (dlen == 0) {
+        return 0;
+    }
+
+    net_err_t err = pktbuf_resize(buf, (int)buf->total_size + dlen);
+    if (err < 0) {
+        dbg_error(DBG_TCP, "pktbuf resize error.");
+        return -1;
+    }
+
+    int hdr_size = tcp_hdr_size((tcp_hdr_t *)pktbuf_data(buf));
+    pktbuf_reset_acc(buf);
+    pktbuf_seek(buf, hdr_size);//定位到数据区
+
+    //拷贝至buf
+    tcp_buf_read_send(&tcp->snd.buf, doff, buf, dlen);
+
+    return dlen;
+}
+
+/*
+syn--------X-------Y-----Z----FIN
+------------------una----nxt----
+-------------------20------25
+x:已确认发送
+Y:已发送未确认 即una,下标为20
+Z:待发送 即nxt 下标为25
+所以nxt-una 的意思是当前已发送但是未收到确认的大小
+用buf->count-(nxt-una) 即剩余数据大小(包含未确认的部分)-未确认的部分
+结果就是dlen,也就是待发送的大小
+*/
+static void get_send_info(tcp_t *tcp, int *doff, int *dlen) {
+    *doff = tcp->snd.nxt - tcp->snd.una;
+    *dlen = tcp_buf_cnt(&tcp->snd.buf) - *doff;
+}
+
 net_err_t tcp_transmit(tcp_t *tcp) {
     pktbuf_t *buf = pktbuf_alloc(sizeof(tcp_hdr_t));
     if (!buf) {
@@ -93,7 +130,19 @@ net_err_t tcp_transmit(tcp_t *tcp) {
     hdr->urgptr = 0; //用不到
     tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
 
-    tcp->snd.nxt += hdr->f_syn + hdr->f_fin;//调整待发送的序号
+    int dlen, doff;//dlen:应该发送多少数据, doff:从发送缓存区的哪个位置去取(如果从0位置开始拷贝,那么这个值相当于已发送的大小)
+    get_send_info(tcp, &doff, &dlen);
+    //如果是三次握手期间,发送syn或者fin的时候,dlen的值为0,
+    //此时不归属于错误,所以下面这个if判断里面,dlen==0的判断要去掉
+    if (dlen < 0) {
+        return NET_ERR_OK;
+    }
+
+    //将tcp发送缓存里面的数据拷贝到buf中,buf会被传入驱动层进行数据发送
+    //doff:从发送缓存区的哪个位置开始拷贝,dlen:需要拷贝多少数据
+    copy_send_data(tcp, buf, doff, dlen);
+
+    tcp->snd.nxt += hdr->f_syn + hdr->f_fin + dlen;//调整待发送的序号
 
     return send_out(hdr, buf, &tcp->base.remote_ip, &tcp->base.local_ip);
 }
@@ -105,6 +154,7 @@ net_err_t tcp_send_syn(tcp_t *tcp) {
     return NET_ERR_OK;
 }
 
+//争对我们发给对方的数据,对方的处理结果,这里是对这个处理结果进行处理
 net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
     tcp_hdr_t *tcp_hdr = seg->hdr;
     
@@ -116,9 +166,27 @@ net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
         tcp->flags.syn_out = 0;//清零,表示该包不需要做重传了
     }
 
-    //用于两边同时关闭的处理,还没搞明白?
-    if (tcp->flags.fin_out && (tcp_hdr->ack - tcp->snd.una > 0)) {
-        tcp->flags.fin_out = 0;
+    //获取到此次确认的大小
+    int acked_cnt = tcp_hdr->ack - tcp->snd.una;
+    //未确认的总大小
+    int unacked = tcp->snd.nxt - tcp->snd.una;
+    //acked_cnt比unacked大的话,应该是有问题的?
+    int curr_acked = (acked_cnt > unacked) ? unacked : acked_cnt;
+    if (curr_acked > 0) {
+        tcp->snd.una += curr_acked;
+
+        //移除此次已确认对方收到的数据
+        //因为curr_acked这个可能包含了FIN,
+        curr_acked -= tcp_buf_remove(&tcp->snd.buf, curr_acked);
+        //如果包含了FIN,则上一句代码,curr_acked的最终结果是1
+
+        //用于两边同时关闭的处理,还没搞明白?
+        if (tcp->flags.fin_out && curr_acked) {
+            tcp->flags.fin_out = 0;
+        }
+
+        //如果应用侧有正在写等待的,此时唤醒
+        sock_wakeup(&tcp->base, SOCK_WAIT_WRITE, NET_ERR_OK);
     }
 
     return NET_ERR_OK;
