@@ -103,6 +103,8 @@ Z:待发送 即nxt 下标为25
 static void get_send_info(tcp_t *tcp, int *doff, int *dlen) {
     *doff = tcp->snd.nxt - tcp->snd.una;
     *dlen = tcp_buf_cnt(&tcp->snd.buf) - *doff;
+
+    *dlen = (*dlen > tcp->mss) ? tcp->mss : *dlen;
 }
 
 net_err_t tcp_transmit(tcp_t *tcp) {

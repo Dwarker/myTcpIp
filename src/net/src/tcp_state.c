@@ -1,6 +1,7 @@
 #include "tcp_state.h"
 #include "tcp_out.h"
 #include "tcp_in.h"
+#include "tools.h"
 
 const char *tcp_state_name(tcp_state_t state) {
     static const char* state_name[] = {
@@ -39,6 +40,49 @@ net_err_t tcp_closed_in(tcp_t *tcp, tcp_seg_t *seg) {
 net_err_t tcp_listen_in(tcp_t *tcp, tcp_seg_t *seg) {
     return NET_ERR_OK;
 }
+
+void tcp_read_option(tcp_t *tcp, tcp_hdr_t * tcp_hdr) {
+    uint8_t *opt_start = (uint8_t *)tcp_hdr + sizeof(tcp_hdr_t);
+    uint8_t *opt_end = opt_start + (tcp_hdr_size(tcp_hdr) - sizeof(tcp_hdr_t));
+
+    // 无选项则退出
+    if (opt_end <= opt_start){
+        return;
+    }
+
+    // 遍历选项区域，做不同的处理
+    while (opt_start < opt_end) {
+        tcp_opt_mss_t * opt = (tcp_opt_mss_t *)opt_start;
+
+        switch (opt_start[0]) {
+            case TCP_OPT_MSS: {
+                // 读取MSS选项，取比较小
+                if (opt->length == 4) {
+                    uint16_t mss = x_ntohs(opt->mss);
+                    if (tcp->mss > mss) {
+                        tcp->mss = mss;     // 取最较的值
+                    }
+                }
+                opt_start += opt->length;
+                break;
+            }
+            case TCP_OPT_NOP: {
+                // 跳过，进入下一选项处理
+                opt_start++;
+                break;
+            }
+            case TCP_OPT_END: {
+                // 结束整个循环
+                return;
+            }
+            default: {
+                opt_start += opt->length;
+                break;
+            }
+        }
+    }
+}
+
 net_err_t tcp_syn_sent_in(tcp_t *tcp, tcp_seg_t *seg) {
     //收到对方对syn的回复
     tcp_hdr_t *tcp_hdr = seg->hdr;
@@ -72,6 +116,9 @@ net_err_t tcp_syn_sent_in(tcp_t *tcp, tcp_seg_t *seg) {
         tcp->rcv.nxt = tcp_hdr->seq + 1;
         //作用见tcp_transmit
         tcp->flags.irs_valid = 1;
+
+        //读取mss值
+        tcp_read_option(tcp, tcp_hdr);
 
         //如果当前值为0,则说明客户端端和服务端同时发了syn包,因为收到的包ack为0,即第一次握手
         if (tcp_hdr->f_ack) {
