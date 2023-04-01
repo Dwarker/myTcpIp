@@ -5,6 +5,8 @@
 #include "net_cfg.h"
 #include "pktbuf.h"
 #include "dbg.h"
+#include "tcp.h"
+#include "tcp_buf.h"
 
 #pragma pack(1)
 typedef struct _tcp_hdr_t {
@@ -102,6 +104,8 @@ typedef struct _tcp_t {
 
     //用于数据发送
     struct {
+        tcp_buf_t buf;
+        uint8_t data[TCP_SBUF_SIZE];//用于发送缓存,即tcp_buf_t中的data指向
         uint32_t una; //unack 已发送,但是还未被对方确认接收的开始序号
         uint32_t nxt; //待发送的起始序号
         uint32_t iss; //初始序号
