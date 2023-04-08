@@ -130,6 +130,9 @@ typedef struct _tcp_t {
     }snd;
 
     struct {
+        tcp_buf_t buf;
+        uint8_t data[TCP_RBUF_SIZE];
+
         uint32_t nxt; //希望接收到的序号,即已接收的最后一个字符后面的序号
         uint32_t iss; //初始序列号
         sock_wait_t wait; //用于等待对方发送数据过来

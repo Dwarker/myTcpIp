@@ -121,6 +121,7 @@ static net_err_t tcp_init_connect(tcp_t *tcp) {
     tcp->snd.una = tcp->snd.nxt = tcp->snd.iss;
 
     //还没接收到服务端的数据,所以直接填0
+    tcp_buf_init(&tcp->rcv.buf, tcp->rcv.data, TCP_RBUF_SIZE);
     tcp->rcv.nxt = 0;
     return NET_ERR_OK;
 }

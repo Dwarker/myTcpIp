@@ -62,4 +62,5 @@
 #define TCP_MAX_NR          10
 
 #define TCP_SBUF_SIZE       4096
+#define TCP_RBUF_SIZE       4096
 #endif
