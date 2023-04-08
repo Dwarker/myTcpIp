@@ -273,11 +273,38 @@ static net_err_t tcp_send(struct _sock_t *s, const void *buf, ssize_t len, int f
     }
 }
 
+net_err_t tcp_recv(struct _sock_t *s, void *buf, ssize_t len, int flags, ssize_t *result_len) {
+    tcp_t *tcp = (tcp_t *)s;
+
+    switch (tcp->state) {
+    case TCP_STATE_LAST_ACK:
+    case TCP_STATE_CLOSED:
+        dbg_error(DBG_TCP, "tcp closed.\n");
+        return NET_ERR_CLOSE;
+    case TCP_STATE_CLOSE_WAIT:
+    case TCP_STATE_CLOSING:
+    case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_FIN_WAIT_2:
+    case TCP_STATE_ESTABLISHED:
+        break;//跳出后,进行数据接收
+    case TCP_STATE_LISTEN:
+    case TCP_STATE_SYN_SENT:
+    case TCP_STATE_SYN_RECVD:
+    case TCP_STATE_TIME_WAIT:
+    default:
+        dbg_error(DBG_TCP, "tcp state error.");
+        return NET_ERR_STATE;
+    }
+
+    return NET_ERR_NEED_WAIT;
+}
+
 static tcp_t *tcp_alloc(int wait, int family, int protocol) {
     static const sock_ops_t tcp_ops = {
         .connect = tcp_connect,
         .close = tcp_close,
         .send = tcp_send,
+        .recv = tcp_recv,
     };
 
     tcp_t *tcp = tcp_get_free(wait);

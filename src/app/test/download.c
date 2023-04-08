@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "net_plat.h"
-#include <winsock2.h>
+//#include <winsock2.h>
+#include "net_api.h"
 
 void download_test (const char *filename, int port) {
     printf("try to download %s from %s: %d\n", filename, friend0_ip, port);
@@ -42,12 +43,12 @@ void download_test (const char *filename, int port) {
         goto failed;
     }
     printf("rcv file size:%d\nrcv file ok\n", (int)total_size);
-    closesocket(sockfd);
+    close(sockfd);
     fclose(file);
     return;
 failed:
     printf("recv file\n");
-    closesocket(sockfd);
+    close(sockfd);
     if (file) {
         fclose(file);
     }
