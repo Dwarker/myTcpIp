@@ -201,7 +201,7 @@ net_err_t tcp_close(struct _sock_t *s) {
         //已经关闭的状态下,再次发送fin,保险起见再尝试释放一遍
         dbg_info(DBG_TCP, "tcp already closed.");
         tcp_free(tcp);
-        break;
+        return NET_ERR_OK;
     //处于三次握手或者四次握手的情况
     //即我方发送了syn包后,又立马关闭了
     case TCP_STATE_SYN_SENT:
@@ -209,7 +209,7 @@ net_err_t tcp_close(struct _sock_t *s) {
         //如果当前有应用程序在等待,则通知关闭连接
         tcp_abort(tcp, NET_ERR_CLOSE);
         tcp_free(tcp);
-        break;
+        return NET_ERR_OK;
     case TCP_STATE_CLOSE_WAIT:
         //正常情况下,对方主动关闭,然后我方再发送fin包关闭的形态
         tcp_send_fin(tcp);
@@ -250,6 +250,7 @@ static net_err_t tcp_send(struct _sock_t *s, const void *buf, ssize_t len, int f
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_ESTABLISHED:
         break;
+    case TCP_STATE_LISTEN:
     case TCP_STATE_SYN_RECVD:
     case TCP_STATE_SYN_SENT:
     default:
@@ -257,6 +258,7 @@ static net_err_t tcp_send(struct _sock_t *s, const void *buf, ssize_t len, int f
         return NET_ERR_STATE;
     }
 
+    //将数据写入发送缓存
     int size = tcp_write_sndbuf(tcp, (uint8_t *)buf, (int)len);
     if (size <= 0) {
         *result_len = 0;

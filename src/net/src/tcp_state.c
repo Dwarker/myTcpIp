@@ -171,6 +171,9 @@ net_err_t tcp_established_in(tcp_t *tcp, tcp_seg_t *seg) {
 
     tcp_data_in(tcp, seg);
 
+    //收到ack后,看是否有数据需要传输
+    tcp_transmit(tcp);
+
     //切换状态
     if (tcp_hdr->f_fin) {
         tcp_set_state(tcp, TCP_STATE_CLOSE_WAIT);
@@ -209,6 +212,9 @@ net_err_t tcp_fin_wait_1_in(tcp_t *tcp, tcp_seg_t *seg) {
 
     tcp_data_in(tcp, seg);
 
+    //主动关闭的时候,也应看下是否缓冲区有数据需要发送
+    tcp_transmit(tcp);
+
     if (tcp->flags.fin_out == 0) {
         //我方发送fin后,收到对方的ack后(即f_fin不为1),则表明我方的发往对方
         //的通路已关闭,同时切换状态,但是如果f_fin为1,说明对方发了fin,也发了ack
@@ -218,7 +224,7 @@ net_err_t tcp_fin_wait_1_in(tcp_t *tcp, tcp_seg_t *seg) {
         } else {
             tcp_set_state(tcp, TCP_STATE_FIN_WAIT_2);
         }
-    } else {
+    } else if (tcp_hdr->f_fin){
         //两边同时关闭的情况
         tcp_set_state(tcp, TCP_STATE_CLOSING);
     }
@@ -285,6 +291,8 @@ net_err_t tcp_closing_in(tcp_t *tcp, tcp_seg_t *seg) {
     //这里不需要再调用tcp_data_in,因为处于time_wait,发送通道已经关闭
     //所以不可能再有业务数据过来
     //tcp_data_in(tcp, seg);
+
+    tcp_transmit(tcp);
 
     if (tcp->flags.fin_out == 0) {
         tcp_time_wait(tcp);
@@ -353,7 +361,8 @@ net_err_t tcp_close_wait_in(tcp_t *tcp, tcp_seg_t *seg) {
         return NET_ERR_UNREACH;
     }
 
-    //todo:单向发往对方
+    //单向发往对方
+    tcp_transmit(tcp);
 
     return NET_ERR_OK;
 }
@@ -381,5 +390,14 @@ net_err_t tcp_last_ack_in(tcp_t *tcp, tcp_seg_t *seg) {
         return NET_ERR_UNREACH;
     }
 
-    return tcp_abort(tcp, NET_ERR_CLOSE);
+    //lastack状态还是可以发送的,因为主动close的时候,
+    //关闭的是应用程序发往缓存的通道,缓存从网卡发出去并没有关闭
+    //所以这里最后看下是否还有数据,有则发送
+    tcp_transmit(tcp);
+
+    //如果收到了对方发送的最后一次挥手的ack,那么在tcp_ack_process中,fin_out会置0
+    if (tcp->flags.fin_out == 0) {
+        return tcp_abort(tcp, NET_ERR_CLOSE);
+    }
+    return NET_ERR_OK;
 }

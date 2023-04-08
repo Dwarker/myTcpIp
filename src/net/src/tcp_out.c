@@ -108,6 +108,25 @@ static void get_send_info(tcp_t *tcp, int *doff, int *dlen) {
 }
 
 net_err_t tcp_transmit(tcp_t *tcp) {
+    int dlen, doff;
+    get_send_info(tcp, &doff, &dlen);
+    if (dlen < 0) {
+        return NET_ERR_OK;
+    }
+
+    int seq_len = dlen;
+    if (tcp->flags.syn_out) {
+        seq_len++;
+    }
+
+    if (tcp->flags.fin_out) {
+        seq_len++;
+    }
+
+    if (seq_len == 0) {
+        return NET_ERR_OK;
+    }
+
     pktbuf_t *buf = pktbuf_alloc(sizeof(tcp_hdr_t));
     if (!buf) {
         dbg_error(DBG_TCP, "no buffer.");
@@ -127,18 +146,25 @@ net_err_t tcp_transmit(tcp_t *tcp) {
     //此时hdr->ack这个值也是无效的,是0
     //收到对方syn+ack后,tcp->flags.irs_valid被置为1,那么这里的f_ack的值也就为1
     hdr->f_ack = tcp->flags.irs_valid;
-    hdr->f_fin = tcp->flags.fin_out; //tcp_send_fin中设置,表示这是个fin包
+    hdr->f_fin = (tcp_buf_cnt(&tcp->snd.buf) == 0) ? tcp->flags.fin_out : 0; //tcp_send_fin中设置,表示这是个fin包
     hdr->win = 1024; //暂时填这个
     hdr->urgptr = 0; //用不到
     tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
 
-    int dlen, doff;//dlen:应该发送多少数据, doff:从发送缓存区的哪个位置去取(如果从0位置开始拷贝,那么这个值相当于已发送的大小)
-    get_send_info(tcp, &doff, &dlen);
+#if 0
+    //bug
+    if (hdr->seq == 8194) {
+        dbg_error(DBG_TCP, "wx----%d %d.", hdr->seq, dlen);
+    }
+#endif
+
+    //int dlen, doff;//dlen:应该发送多少数据, doff:从发送缓存区的哪个位置去取(如果从0位置开始拷贝,那么这个值相当于已发送的大小)
+    //get_send_info(tcp, &doff, &dlen);
     //如果是三次握手期间,发送syn或者fin的时候,dlen的值为0,
     //此时不归属于错误,所以下面这个if判断里面,dlen==0的判断要去掉
-    if (dlen < 0) {
-        return NET_ERR_OK;
-    }
+    //if (dlen < 0) {
+    //    return NET_ERR_OK;
+    //}
 
     //将tcp发送缓存里面的数据拷贝到buf中,buf会被传入驱动层进行数据发送
     //doff:从发送缓存区的哪个位置开始拷贝,dlen:需要拷贝多少数据
@@ -228,7 +254,7 @@ net_err_t tcp_send_fin(tcp_t *tcp) {
 
 int tcp_write_sndbuf(tcp_t *tcp, const uint8_t *buf, int len) {
     int free_cnt = tcp_buf_free_cnt(&tcp->snd.buf);
-    if (free_cnt < 0) {
+    if (free_cnt <= 0) {
         return 0;
     }
 
