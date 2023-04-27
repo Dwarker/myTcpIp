@@ -91,6 +91,8 @@ net_err_t tcp_in(pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
 
 //目前只做对方发送过来的fin的处理
 net_err_t tcp_data_in(tcp_t *tcp, tcp_seg_t *seg) {
+    tcp_buf_write_rcv(&tcp->rcv.buf, 0, seg->buf, seg->data_len);
+
     int wakeup = 0;
     tcp_hdr_t *tcp_hdr = seg->hdr;
     if (tcp_hdr->f_fin) {
