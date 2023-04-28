@@ -58,6 +58,7 @@ void tcp_buf_read_send(tcp_buf_t * buf, int offset, pktbuf_t * dest, int count) 
 
 /**
  * @brief 写接收缓存。当从网络上接收数据时，从src中提出数据写入dest中
+ * offset:比如缓冲区中已经有ab了,那么offset的值就是ab后面的偏移 2
  */
 //需要再看
 int tcp_buf_write_rcv(tcp_buf_t * dest, int offset, pktbuf_t * src, int total) {
@@ -108,4 +109,20 @@ int tcp_buf_remove(tcp_buf_t *buf, int cnt) {
 
     buf->count -= cnt;
     return cnt;
+}
+
+int tcp_buf_read_rcv(tcp_buf_t *buf, uint8_t *dest, int count) {
+    int total = count > buf->count ? buf->count : count;
+
+    int curr_size = 0;
+    while (curr_size < total) {
+        *dest++ = buf->data[buf->out++];
+        if (buf->out >= buf->size) {
+            buf->out = 0;
+        }
+        buf->count--;
+        curr_size++;
+    }
+
+    return total;
 }

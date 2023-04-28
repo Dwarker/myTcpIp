@@ -34,6 +34,7 @@ void download_test (const char *filename, int port) {
     int rcv_size;
     while ((rcv_size = recv(sockfd, buf, sizeof(buf), 0)) > 0) {
         fwrite(buf, 1, rcv_size, file);
+        fflush(file);
         printf(".");
         total_size += rcv_size;
     }

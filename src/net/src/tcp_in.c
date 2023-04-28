@@ -82,18 +82,55 @@ net_err_t tcp_in(pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
         return NET_ERR_OK;
     }
 
+    //上面并未移除tcp包头,而后面是对应用层的数据进行操作,
+    //所以这里将数据位置偏移一下
+    net_err_t err = pktbuf_seek(buf, tcp_hdr_size(tcp_hdr));
+    if (err < 0) {
+        dbg_error(DBG_TCP, "seek failed.");
+        return NET_ERR_SIZE;
+    }
+
     tcp_state_proc[tcp->state](tcp, &seg);
     tcp_show_info("after tcp in", tcp);
 
     //tcp_show_list();
+
+    pktbuf_free(buf);//这里如是应用层还没读取,这里就释放?
     return NET_ERR_OK;
+}
+
+
+static int copy_data_to_rcvbuf(tcp_t *tcp, tcp_seg_t *seg) {
+    int doffset = seg->seq - tcp->rcv.nxt;//正常情况下,希望对方发的序列号和对方发的序列号是相等的
+    if (seg->data_len && (doffset == 0)) {
+        //doffset是缓冲区中应该放的位置,而不是第一个空的位置,
+        //因为有可能发生重传,比如已有ab,然后服务端以为ab丢了,就重传了abcd
+        //所以会根据rcv.nxt和发生过来包的seq值去判断
+        tcp_buf_write_rcv(&tcp->rcv.buf, doffset, seg->buf, seg->data_len);
+    }
+
+    return 0;
 }
 
 //目前只做对方发送过来的fin的处理
 net_err_t tcp_data_in(tcp_t *tcp, tcp_seg_t *seg) {
-    tcp_buf_write_rcv(&tcp->rcv.buf, 0, seg->buf, seg->data_len);
+    //tcp_buf_write_rcv(&tcp->rcv.buf, 0, seg->buf, seg->data_len);
+    int size = copy_data_to_rcvbuf(tcp, seg);
+    if (size < 0) {
+        dbg_error(DBG_TCP, "copy data to rcvbuf failed.");
+        return NET_ERR_SIZE;
+    }
 
     int wakeup = 0;
+
+    //调整nxt的值
+    if (size) {
+        tcp->rcv.nxt += size;
+        //此时缓冲区有数据了,而上层应用可能正在等待数据,
+        //这样,下面就会唤醒上层应用程序
+        wakeup++;
+    }
+
     tcp_hdr_t *tcp_hdr = seg->hdr;
     if (tcp_hdr->f_fin) {
         //将期望对方下次再发送的序列号进行加1,

@@ -407,7 +407,7 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
                 dbg_warning(DBG_IP, "icmp in failed.");
                 return err;
             }
-            break;
+            return NET_ERR_OK;
         }
     case NET_PROTOCOL_UDP:
         net_err_t err = udp_in(buf, src_ip, dest_ip);
@@ -438,7 +438,7 @@ static net_err_t ip_normal_in(netif_t *netif, pktbuf_t *buf, ipaddr_t *src_ip, i
             dbg_warning(DBG_IP, "raw in error");
             return err;
         }
-        break;
+        return NET_ERR_OK;
     }
 
     return NET_ERR_UNREACH;
