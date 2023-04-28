@@ -276,6 +276,8 @@ static net_err_t tcp_send(struct _sock_t *s, const void *buf, ssize_t len, int f
 net_err_t tcp_recv(struct _sock_t *s, void *buf, ssize_t len, int flags, ssize_t *result_len) {
     tcp_t *tcp = (tcp_t *)s;
 
+    int need_wait = NET_ERR_NEED_WAIT;
+
     switch (tcp->state) {
     case TCP_STATE_LAST_ACK:
     case TCP_STATE_CLOSED:
@@ -283,6 +285,9 @@ net_err_t tcp_recv(struct _sock_t *s, void *buf, ssize_t len, int flags, ssize_t
         return NET_ERR_CLOSE;
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_CLOSING:
+        //这两种情况下,如果缓冲区没数据,则不需要等,因为关闭了发送通道
+        need_wait = NET_ERR_OK;
+        break;
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
     case TCP_STATE_ESTABLISHED:
@@ -296,9 +301,10 @@ net_err_t tcp_recv(struct _sock_t *s, void *buf, ssize_t len, int flags, ssize_t
         return NET_ERR_STATE;
     }
 
+    *result_len = 0;
     int cnt = tcp_buf_read_rcv(&tcp->rcv.buf, buf, (int)len);
     if (cnt > 0) {
-        *result_len = len;
+        *result_len = cnt;
         return NET_ERR_OK;
     }
 

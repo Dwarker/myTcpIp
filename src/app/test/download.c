@@ -30,7 +30,7 @@ void download_test (const char *filename, int port) {
     }
 
     ssize_t total_size = 0;
-    char buf[8192];
+    char buf[8192] = {0};
     int rcv_size;
     while ((rcv_size = recv(sockfd, buf, sizeof(buf), 0)) > 0) {
         fwrite(buf, 1, rcv_size, file);

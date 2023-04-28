@@ -106,7 +106,7 @@ static int copy_data_to_rcvbuf(tcp_t *tcp, tcp_seg_t *seg) {
         //doffset是缓冲区中应该放的位置,而不是第一个空的位置,
         //因为有可能发生重传,比如已有ab,然后服务端以为ab丢了,就重传了abcd
         //所以会根据rcv.nxt和发生过来包的seq值去判断
-        tcp_buf_write_rcv(&tcp->rcv.buf, doffset, seg->buf, seg->data_len);
+        return tcp_buf_write_rcv(&tcp->rcv.buf, doffset, seg->buf, seg->data_len);
     }
 
     return 0;

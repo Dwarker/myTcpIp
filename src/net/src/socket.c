@@ -140,7 +140,10 @@ ssize_t x_recvfrom(int s, void* buf, size_t len, int flags,
 
         //如果没有数据则等待,有数据到了则进入循环再次读取
         err = sock_wait_enter(req.wait, req.wait_tmo);
-        if (err < 0) {
+        if (err == NET_ERR_CLOSE) {
+            dbg_info(DBG_SOCKET, "remote close");
+            return 0;
+        } else if (err < 0) {
             dbg_error(DBG_SOCKET, "recv failed.");
             return -1;
         }
@@ -176,7 +179,10 @@ ssize_t x_recv(int s, void* buf, size_t len, int flags) {
 
         //如果没有数据则等待,有数据到了则进入循环再次读取
         err = sock_wait_enter(req.wait, req.wait_tmo);
-        if (err < 0) {
+        if (err == NET_ERR_CLOSE) {
+            dbg_info(DBG_SOCKET, "remote close");
+            return 0;
+        } else if (err < 0) {
             dbg_error(DBG_SOCKET, "recv failed.");
             return -1;
         }
