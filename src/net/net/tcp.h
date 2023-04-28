@@ -155,6 +155,7 @@ sock_t *tcp_create(int family, int protocol);
 tcp_t *tcp_find(ipaddr_t *local_ip, uint16_t local_port, ipaddr_t *remote_ip, uint16_t remote_port);
 net_err_t tcp_abort(tcp_t *tcp, net_err_t err);
 void tcp_read_option(tcp_t *tcp, tcp_hdr_t *tcp_hdr);
+int tcp_rcv_window(tcp_t *tcp);
 
 static inline int tcp_hdr_size(tcp_hdr_t *hdr) {
     return hdr->shdr * 4;

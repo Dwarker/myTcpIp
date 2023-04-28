@@ -166,7 +166,7 @@ net_err_t tcp_transmit(tcp_t *tcp) {
     //收到对方syn+ack后,tcp->flags.irs_valid被置为1,那么这里的f_ack的值也就为1
     hdr->f_ack = tcp->flags.irs_valid;
     hdr->f_fin = (tcp_buf_cnt(&tcp->snd.buf) == 0) ? tcp->flags.fin_out : 0; //tcp_send_fin中设置,表示这是个fin包
-    hdr->win = 1024; //暂时填这个
+    hdr->win = tcp_rcv_window(tcp); //暂时填这个
     hdr->urgptr = 0; //用不到
 
     if (hdr->f_syn) {
@@ -263,7 +263,7 @@ net_err_t tcp_send_ack(tcp_t *tcp, tcp_seg_t *seg) {
     hdr->ack = tcp->rcv.nxt; //告诉对方,我方希望接收的序列号是0(也就是还没收到数据)
     hdr->flag = 0;
     hdr->f_ack = 1;//表示我收到你们的包了
-    hdr->win = 1024; //暂时填这个
+    hdr->win = tcp_rcv_window(tcp); //暂时填这个
     hdr->urgptr = 0; //用不到
     tcp_set_hdr_size(hdr, sizeof(tcp_hdr_t));
 

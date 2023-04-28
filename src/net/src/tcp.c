@@ -415,3 +415,8 @@ net_err_t tcp_abort(tcp_t *tcp, net_err_t err) {
     sock_wakeup(&tcp->base, SOCK_WAIT_ALL, err);
     return NET_ERR_OK;
 }
+
+int tcp_rcv_window(tcp_t *tcp) {
+    int windows = tcp_buf_free_cnt(&tcp->rcv.buf);
+    return windows;
+}

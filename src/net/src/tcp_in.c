@@ -35,6 +35,12 @@ net_err_t tcp_in(pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
     };
 
     tcp_hdr_t *tcp_hdr = (tcp_hdr_t *)pktbuf_data(buf);
+    if (pktbuf_set_cont(buf, sizeof(tcp_hdr_t)) < 0) {
+        dbg_error(DBG_TCP, "set cont failed.");
+        return -1;
+    }
+
+    tcp_hdr = (tcp_hdr_t *)pktbuf_data(buf);
     if (tcp_hdr->checksum) {
         pktbuf_reset_acc(buf);
         if (checksum_peso(buf, dest_ip, src_ip, NET_PROTOCOL_TCP)) {
