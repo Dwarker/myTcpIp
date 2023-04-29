@@ -298,7 +298,7 @@ net_err_t sock_recv_req_in(struct _func_msg_t *msg) {
 net_err_t sock_setopt(struct _sock_t *s, int level, int optname, const char* optval, int optlen) {
     if (level != SOL_SOCKET) {
         dbg_error(DBG_SOCKET, "unknow level");
-        return NET_ERR_PARAM;
+        return NET_ERR_UNKNOWN;
     }
 
     switch (optname)
@@ -320,13 +320,13 @@ net_err_t sock_setopt(struct _sock_t *s, int level, int optname, const char* opt
             s->snd_tmo = time_ms;
             return NET_ERR_OK;
         } else {
-            return NET_ERR_PARAM;
+            return NET_ERR_UNKNOWN;
         }
     default:
         break;
     }
 
-    return NET_ERR_PARAM;
+    return NET_ERR_UNKNOWN;
 }
 
 net_err_t sock_setsockopt_req_in(struct _func_msg_t *msg) {

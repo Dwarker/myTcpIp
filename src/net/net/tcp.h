@@ -7,6 +7,7 @@
 #include "dbg.h"
 #include "tcp.h"
 #include "tcp_buf.h"
+#include "timer.h"
 
 #define TCP_DEFAULT_MSS     536
 
@@ -107,6 +108,7 @@ typedef struct _tcp_t {
         uint32_t fin_in : 1;    //表示是否数据接收真的完毕了
         uint32_t fin_out : 1;
         uint32_t irs_valid : 1; //收到对方的syn包(包含了初始序列号) 表明收到了对方的报文
+        uint32_t keep_enable : 1;
     }flags;
 
     tcp_state_t state;
@@ -117,6 +119,13 @@ typedef struct _tcp_t {
     struct
     {
         sock_wait_t wait;
+
+        int keep_idle;
+        int keep_intvl;
+        int keep_cnt;
+        int keep_retry;
+
+        net_timer_t keep_timer;
     }conn;
 
     //用于数据发送
