@@ -171,7 +171,8 @@ net_err_t tcp_data_in(tcp_t *tcp, tcp_seg_t *seg) {
     }
 
     tcp_hdr_t *tcp_hdr = seg->hdr;
-    if (tcp_hdr->f_fin) {
+    if (tcp_hdr->f_fin && (tcp->rcv.nxt == seg->seq)) {
+        tcp->flags.fin_in = 1;
         //将期望对方下次再发送的序列号进行加1,
         //因为是fin包,所以不携带数据,只加1即可
         tcp->rcv.nxt++;//这里因为自增了,所以发送的时候(tcp_send_ack),ack会被赋值tcp->rcv.nxt
@@ -182,7 +183,7 @@ net_err_t tcp_data_in(tcp_t *tcp, tcp_seg_t *seg) {
     //如果此时上层应用正在recv/read的时候收到fin,则通知上层应用终止数据传输
     
     if (wakeup) {
-        if (tcp_hdr->f_fin) {
+        if (tcp->flags.fin_in) {
             sock_wakeup(&tcp->base, SOCK_WAIT_ALL, NET_ERR_CLOSE);
         } else {
             //这里目前应该走不到吧?

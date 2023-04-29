@@ -175,7 +175,7 @@ net_err_t tcp_established_in(tcp_t *tcp, tcp_seg_t *seg) {
     tcp_transmit(tcp);
 
     //切换状态
-    if (tcp_hdr->f_fin) {
+    if (tcp->flags.fin_in) {
         tcp_set_state(tcp, TCP_STATE_CLOSE_WAIT);
     }
 
@@ -218,13 +218,13 @@ net_err_t tcp_fin_wait_1_in(tcp_t *tcp, tcp_seg_t *seg) {
     if (tcp->flags.fin_out == 0) {
         //我方发送fin后,收到对方的ack后(即f_fin不为1),则表明我方的发往对方
         //的通路已关闭,同时切换状态,但是如果f_fin为1,说明对方发了fin,也发了ack
-        if (tcp_hdr->f_fin) {
+        if (tcp->flags.fin_in) {
             //需要回复对方ack,这个在tcp_data_in已经回复了
             tcp_time_wait(tcp);
         } else {
             tcp_set_state(tcp, TCP_STATE_FIN_WAIT_2);
         }
-    } else if (tcp_hdr->f_fin){
+    } else if (tcp->flags.fin_in){
         //两边同时关闭的情况
         tcp_set_state(tcp, TCP_STATE_CLOSING);
     }
@@ -258,7 +258,7 @@ net_err_t tcp_fin_wait_2_in(tcp_t *tcp, tcp_seg_t *seg) {
     tcp_data_in(tcp, seg);
 
     //我方发送fin后,走到这里,说明对方先发的ack,再发送的fin
-    if (tcp_hdr->f_fin) {
+    if (tcp->flags.fin_in) {
         //需要回复对方ack,这个在tcp_data_in已经回复了
         tcp_time_wait(tcp);
     }
@@ -328,7 +328,7 @@ net_err_t tcp_time_wait_in(tcp_t *tcp, tcp_seg_t *seg) {
     //tcp_data_in(tcp, seg);
 
     //time_wait下,收到对方重传的fin包(第三次挥手包)
-    if (tcp_hdr->f_fin) {
+    if (tcp->flags.fin_in) {
         tcp_send_ack(tcp, seg);
         tcp_time_wait(tcp);
     }
