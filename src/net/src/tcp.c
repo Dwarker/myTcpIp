@@ -311,12 +311,17 @@ net_err_t tcp_recv(struct _sock_t *s, void *buf, ssize_t len, int flags, ssize_t
     return NET_ERR_NEED_WAIT;
 }
 
+net_err_t tcp_setopt(struct _sock_t *s, int level, int optname, const char* optval, int optlen) {
+    return NET_ERR_OK;
+}
+
 static tcp_t *tcp_alloc(int wait, int family, int protocol) {
     static const sock_ops_t tcp_ops = {
         .connect = tcp_connect,
         .close = tcp_close,
         .send = tcp_send,
         .recv = tcp_recv,
+        .setopt = tcp_setopt,
     };
 
     tcp_t *tcp = tcp_get_free(wait);
