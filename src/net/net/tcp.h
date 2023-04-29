@@ -164,4 +164,10 @@ static inline int tcp_hdr_size(tcp_hdr_t *hdr) {
 static inline void tcp_set_hdr_size(tcp_hdr_t *hdr, int size) {
     hdr->shdr = size / 4;
 }
+
+//a <= b
+#define TCP_SEQ_LE(a, b)    (((int32_t)(a) - (int32_t)(b)) <= 0)
+
+//a < b
+#define TCP_SEQ_LT(a, b)    (((int32_t)(a) - (int32_t)(b)) < 0)
 #endif

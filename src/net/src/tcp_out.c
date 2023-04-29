@@ -210,6 +210,13 @@ net_err_t tcp_send_syn(tcp_t *tcp) {
 net_err_t tcp_ack_process(tcp_t *tcp, tcp_seg_t *seg) {
     tcp_hdr_t *tcp_hdr = seg->hdr;
     
+    //snd.una < ack <= snd.nxt
+    if (TCP_SEQ_LE(tcp_hdr->ack, tcp->snd.una)) {
+        return NET_ERR_OK;
+    } else if (TCP_SEQ_LT(tcp->snd.nxt, tcp_hdr->ack)) {
+        return NET_ERR_UNREACH;
+    }
+
     //服务端发送fin的时候syn_out这个值是0,因为前面的数据都已经被接收了
     if (tcp->flags.syn_out) {
         //下一个待确认的序列号,因为是争对第一次握手syn的回包处理,
