@@ -369,6 +369,12 @@ net_err_t tcp_setopt(struct _sock_t *s, int level, int optname, const char* optv
     return NET_ERR_OK;
 }
 
+net_err_t tcp_bind(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len) {
+
+
+    return NET_ERR_OK;
+}
+
 static tcp_t *tcp_alloc(int wait, int family, int protocol) {
     static const sock_ops_t tcp_ops = {
         .connect = tcp_connect,
@@ -376,6 +382,7 @@ static tcp_t *tcp_alloc(int wait, int family, int protocol) {
         .send = tcp_send,
         .recv = tcp_recv,
         .setopt = tcp_setopt,
+        .bind = tcp_bind,
     };
 
     tcp_t *tcp = tcp_get_free(wait);
