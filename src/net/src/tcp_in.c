@@ -113,6 +113,9 @@ net_err_t tcp_in(pktbuf_t *buf, ipaddr_t *src_ip, ipaddr_t *dest_ip) {
         return NET_ERR_OK;
     }
 
+    //接收到数据, 重新启动保活时间
+    tcp_keepalive_restart(tcp);
+
     //上面并未移除tcp包头,而后面是对应用层的数据进行操作,
     //所以这里将数据位置偏移一下
     net_err_t err = pktbuf_seek(buf, tcp_hdr_size(tcp_hdr));

@@ -120,10 +120,14 @@ typedef struct _tcp_t {
     {
         sock_wait_t wait;
 
-        int keep_idle;
-        int keep_intvl;
+        /*
+        ----------|-------------|--------|------|
+        正常通信    保活时间       保活间隔
+        */
+        int keep_idle;  //保活时间
+        int keep_intvl; //保活间隔
         int keep_cnt;
-        int keep_retry;
+        int keep_retry; //用于定时器发生时的计数
 
         net_timer_t keep_timer;
     }conn;
@@ -180,4 +184,9 @@ static inline void tcp_set_hdr_size(tcp_hdr_t *hdr, int size) {
 
 //a < b
 #define TCP_SEQ_LT(a, b)    (((int32_t)(a) - (int32_t)(b)) < 0)
+
+void tcp_kill_all_timers(tcp_t *tcp);
+void tcp_keepalive_start(tcp_t *tcp, int run);
+void tcp_keepalive_restart(tcp_t *tcp);
+
 #endif
