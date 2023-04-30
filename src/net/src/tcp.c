@@ -493,13 +493,16 @@ static void tcp_alive_tmo(struct _net_timer_t *timer, void *arg) {
     tcp_t *tcp = (tcp_t *)arg;
     if (++tcp->conn.keep_retry <= tcp->conn.keep_cnt) {
         //发送报文
+        tcp_send_keepalive(tcp);
 
         net_timer_remove(&tcp->conn.keep_timer);
         net_timer_add(&tcp->conn.keep_timer, "keepalive", tcp_alive_tmo, tcp, tcp->conn.keep_intvl * 1000, 0);
         dbg_info(DBG_TCP, "tcp alive tmo, retry: %d", tcp->conn.keep_cnt);
     } else {
         //发送reset报文
-        tcp_abort(tcp, NET_ERR_TMO);
+        tcp_send_reset_for_tcp(tcp);
+
+        tcp_abort(tcp, NET_ERR_CLOSE);
         dbg_error(DBG_TCP, "tcp alive tmo, give up");
     }
 }

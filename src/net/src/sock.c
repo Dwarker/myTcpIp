@@ -292,7 +292,7 @@ net_err_t sock_recv_req_in(struct _func_msg_t *msg) {
             sock_wait_add(sock->rcv_wait, sock->rcv_tmo, req);
         }
     }
-    return NET_ERR_OK;
+    return err;
 }
 
 net_err_t sock_setopt(struct _sock_t *s, int level, int optname, const char* optval, int optlen) {
