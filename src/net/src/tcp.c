@@ -370,7 +370,63 @@ net_err_t tcp_setopt(struct _sock_t *s, int level, int optname, const char* optv
 }
 
 net_err_t tcp_bind(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len) {
+    tcp_t *tcp = (tcp_t *)s;
 
+    if (tcp->state != TCP_STATE_CLOSED) {
+        dbg_error(DBG_TCP, "state error.");
+        return NET_ERR_STATE;
+    }
+
+    if (s->local_port != NET_PORT_EMPTY) {
+        dbg_error(DBG_TCP, "already binded.");
+        return NET_ERR_PARAM;
+    }
+
+    const struct x_sockaddr_in *addr_in = (const struct x_sockaddr_in *)addr;
+    if (addr_in->sin_port == NET_PORT_EMPTY) {
+        dbg_error(DBG_TCP, "port is empty.");
+        return NET_ERR_PARAM;
+    }
+
+    //查看传进来的ip地址,本机是否有网卡符合
+    ipaddr_t local_ip;
+    ipaddr_from_buf(&local_ip, (uint8_t *)&addr_in->sin_addr);
+    if (!ipaddr_is_any(&local_ip)) {
+        rentry_t *rt = rt_find(&local_ip);
+        if (rt == (rentry_t *)0) {
+            dbg_error(DBG_TCP, "ip addr error.");
+            return NET_ERR_ADDR;
+        }
+
+        if (!ipaddr_is_equal(&local_ip, &rt->netif->ipaddr)) {
+            dbg_error(DBG_TCP, "ipaddr error.");
+            return NET_ERR_ADDR;
+        }
+    }
+
+    //查询tcp链表中是否已存在被绑定的端口
+    nlist_node_t *node;
+    nlist_for_each(node, &tcp_list) {
+        sock_t *curr = (sock_t *)nlist_entry(node, sock_t, node);
+        if (curr == s) {
+            continue;
+        }
+
+        //local: 0.0.0.0 1000  remote: 0.0.0.0 0  监听套接字
+        //local: 0.0.0.0 1000  remote: 192.168.74.3 2000 通信套接字
+        if (curr->remote_port != NET_PORT_EMPTY) {
+            continue;
+        }
+
+        if (ipaddr_is_equal(&curr->local_ip, &local_ip)
+            && (curr->local_port == addr_in->sin_port)) {
+            dbg_error(DBG_TCP, "ipaddr and port already binded.");
+            return NET_ERR_ADDR;
+        }
+    }
+
+    ipaddr_copy(&s->local_ip, &local_ip);
+    s->local_port = x_ntohs(addr_in->sin_port);
 
     return NET_ERR_OK;
 }
