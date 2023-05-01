@@ -192,5 +192,12 @@ static inline void tcp_set_hdr_size(tcp_hdr_t *hdr, int size) {
 void tcp_kill_all_timers(tcp_t *tcp);
 void tcp_keepalive_start(tcp_t *tcp, int run);
 void tcp_keepalive_restart(tcp_t *tcp);
+int tcp_backlog_count(tcp_t *tcp);
+
+//tcp_t *tcp这个是父tcp
+tcp_t *tcp_create_child(tcp_t *tcp, tcp_seg_t *seg);
+
+void tcp_insert(tcp_t *tcp);
+tcp_t *tcp_alloc(int wait, int family, int protocol);
 
 #endif
