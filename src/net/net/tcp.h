@@ -119,6 +119,7 @@ typedef struct _tcp_t {
     struct
     {
         sock_wait_t wait;
+        int backlog;
 
         /*
         ----------|-------------|--------|------|
