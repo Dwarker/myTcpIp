@@ -45,7 +45,7 @@ typedef struct _sock_ops_t {
     net_err_t (*bind)(struct _sock_t *s, const struct x_sockaddr *addr, x_socklen_t addr_len);
     void (*destory) (struct _sock_t *s);
     net_err_t (*listen)(struct _sock_t *s, int backlog);
-    net_err_t (*accept)(struct _sock_t *s, struct _x_sockaddr *addr, x_socklen_t *len, struct _sock_t **client);
+    net_err_t (*accept)(struct _sock_t *s, struct x_sockaddr *addr, x_socklen_t *len, struct _sock_t **client);
 }sock_ops_t;
 
 typedef struct _sock_t {
