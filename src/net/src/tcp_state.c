@@ -88,8 +88,10 @@ void tcp_read_option(tcp_t *tcp, tcp_hdr_t * tcp_hdr) {
                     if (tcp->mss > mss) {
                         tcp->mss = mss;     // 取最较的值
                     }
+                    opt_start += opt->length;
+                } else {
+                    opt_start++;
                 }
-                opt_start += opt->length;
                 break;
             }
             case TCP_OPT_NOP: {
