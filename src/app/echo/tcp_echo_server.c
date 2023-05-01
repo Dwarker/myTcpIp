@@ -27,7 +27,7 @@ void tcp_echo_server_start(int port) {
     while(1) {
         struct sockaddr_in client_addr;
         socklen_t addr_len = sizeof(client_addr);
-        SOCKET client = accept(s, (struct sockaddr *)&client_addr, &addr_len);
+        int client = accept(s, (struct sockaddr *)&client_addr, &addr_len);
         if (client < 0) {
             plat_printf("accept error\n");
             break;
