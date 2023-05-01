@@ -103,12 +103,15 @@ typedef enum _tcp_state_t {
 typedef struct _tcp_t {
     sock_t base;
 
+    struct _tcp_t *parent;
+
     struct {
         uint32_t syn_out : 1;   //1 syn已经发送, 0 收到syn的ack回包 (就是重传作用)
         uint32_t fin_in : 1;    //表示是否数据接收真的完毕了
         uint32_t fin_out : 1;
         uint32_t irs_valid : 1; //收到对方的syn包(包含了初始序列号) 表明收到了对方的报文
         uint32_t keep_enable : 1;
+        uint32_t inactive : 1;  //1:非激活状态, 未被服务器利用accept接口取出
     }flags;
 
     tcp_state_t state;
